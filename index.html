@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>✈️ SkyExplorer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@10.2.1/ol.css">
+  <script src="https://cdn.jsdelivr.net/npm/ol@10.2.1/dist/ol.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Splash / pantalla de carga -->
+  <div id="splash">
+    <div class="splash-plane">✈️</div>
+    <h1>SKYEXPLORER</h1>
+    <p>Cargando mapa 3D<span class="dots"><span>.</span><span>.</span><span>.</span></span></p>
+  </div>
+
+  <!-- Mapa -->
+  <div id="map"></div>
+
+  <!-- Buscador (arriba izquierda) -->
+  <div id="search-panel">
+    <div id="search-box">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="search-input" placeholder="Ciudad o aeropuerto… (Enter)" autocomplete="off">
+    </div>
+    <div id="search-status"></div>
+  </div>
+
+  <!-- Botón bitácora (arriba derecha) -->
+  <button id="logbook-btn" title="Bitácora de viaje">
+    📖
+    <span id="logbook-count">0</span>
+  </button>
+
+  <!-- Instrumentos de vuelo (abajo izquierda) -->
+  <div id="instruments">
+    <div class="panel">
+      <div class="panel-title">✈ Instrumentos</div>
+      <div class="panel-row"><span class="label">ALT</span><span class="value" id="i-alt">350 m</span></div>
+      <div class="panel-row"><span class="label">VEL</span><span class="value" id="i-spd">216 km/h</span></div>
+      <div class="panel-row"><span class="label">DIR</span><span class="value" id="i-hdg">0°</span></div>
+      <div class="panel-row"><span class="label">LAT</span><span class="value" id="i-lat">--</span></div>
+      <div class="panel-row"><span class="label">LNG</span><span class="value" id="i-lng">--</span></div>
+    </div>
+  </div>
+
+  <!-- Controles (abajo derecha) -->
+  <div id="controls">
+    <div class="panel hint">
+      <b>← →</b> Girar<br>
+      <b>↑ W</b> Ascender<br>
+      <b>↓ S</b> Descender<br>
+      <b>Enter</b> Buscar ciudad<br>
+      <b>Esc</b> Cerrar ventana<br>
+      <b>P</b> Pausar
+    </div>
+  </div>
+
+  <!-- Notificación flotante -->
+  <div id="notification"></div>
+
+  <!-- ══════════════════════════════════════════════
+       VENTANA DE DESCUBRIMIENTO (pausa el juego)
+  ═══════════════════════════════════════════════ -->
+  <div id="discovery-overlay">
+    <div id="discovery-card">
+      <div id="discovery-badge">✨ ¡Lugar descubierto!</div>
+      <div id="disc-photos">
+        <button class="photo-arrow left"  id="disc-photo-prev">‹</button>
+        <button class="photo-arrow right" id="disc-photo-next">›</button>
+        <div id="disc-photo-dots"></div>
+      </div>
+      <div id="disc-body">
+        <div id="disc-header">
+          <span id="disc-icon">📍</span>
+          <span id="disc-name">Lugar</span>
+        </div>
+        <p id="disc-description"></p>
+        <p id="disc-coords"></p>
+      </div>
+      <button id="discovery-close">Continuar volando ✈</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       PANEL BITÁCORA
+  ═══════════════════════════════════════════════ -->
+  <div id="logbook-panel">
+    <div id="logbook-header">
+      <span>📖 Bitácora de Viaje</span>
+      <button id="logbook-close">✕</button>
+    </div>
+    <div id="logbook-empty">
+      <p>🌍</p>
+      <p>Aún no has descubierto ningún lugar.</p>
+      <p>¡Vuela y acércate a los marcadores!</p>
+    </div>
+    <div id="logbook-list"></div>
+  </div>
+
+  <!-- Panel de información de lugar (desde bitácora o mapa) -->
+  <div id="poi-panel">
+    <button id="poi-close">✕</button>
+    <div id="poi-photos">
+      <button class="photo-arrow left"  id="photo-prev">‹</button>
+      <button class="photo-arrow right" id="photo-next">›</button>
+      <div id="photo-dots"></div>
+    </div>
+    <div id="poi-body">
+      <div id="poi-header">
+        <span id="poi-icon">📍</span>
+        <span id="poi-name">Lugar</span>
+      </div>
+      <p id="poi-description"></p>
+      <p id="poi-coords"></p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       PANTALLA DE PAUSA
+  ═══════════════════════════════════════════════ -->
+  <div id="pause-overlay">
+    <div id="pause-card">
+      <div id="pause-plane">✈️</div>
+      <h2 id="pause-title">PAUSA</h2>
+      <p id="pause-subtitle">Vuelo detenido</p>
+      <div id="pause-divider"></div>
+      <div id="pause-hints">
+        <div class="pause-hint-row"><b>← →</b> Girar</div>
+        <div class="pause-hint-row"><b>↑ W</b> Ascender</div>
+        <div class="pause-hint-row"><b>↓ S</b> Descender</div>
+        <div class="pause-hint-row"><b>P</b> Pausar / Reanudar</div>
+      </div>
+      <button id="pause-resume-btn">▶ Reanudar vuelo</button>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
