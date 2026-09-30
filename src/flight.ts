@@ -2,9 +2,12 @@ import { Cartesian3, HeadingPitchRange, HeadingPitchRoll, Math as CMath, Matrix4
 
 const R = 6378137;
 const G = 9.81;
-const MIN_SPEED = 35; // m/s (~68 kt), por debajo una avioneta entra en pérdida
-const MAX_SPEED = 120; // m/s (~233 kt)
-const MIN_CLEARANCE = 25; // metros sobre suelo/edificios
+// Como en el vuelo turístico de Wii Sports Resort: velocidad de crucero, acelerón y freno mientras se mantienen.
+const CRUISE = 45; // m/s
+const BOOST = 95;
+const SLOW = 22;
+const MIN_CLEARANCE = 20; // metros sobre suelo/edificios
+const START_ALTITUDE = 300; // metros sobre la ciudad al llegar
 
 export interface Controls { pitch: number; roll: number; yaw: number; throttle: number }
 export type CameraMode = 'chase' | 'cockpit';
@@ -12,8 +15,9 @@ export type CameraMode = 'chase' | 'cockpit';
 export class Plane {
   lat = 0; lng = 0; height = 600; // grados, metros
   heading = 0; pitch = 0; roll = 0; // radianes (heading 0 = norte, horario)
-  speed = 60;
-  throttle = 0.4;
+  speed = CRUISE;
+  /** 0 = freno, 0.5 = crucero, 1 = acelerón (para el HUD y el sonido). */
+  throttle = 0.5;
   ground = 0;
   cameraMode: CameraMode = 'chase';
   private camHeading = 0;
@@ -22,20 +26,20 @@ export class Plane {
   constructor(private viewer: Viewer) {}
 
   async load(url: string) {
-    this.model = await Model.fromGltfAsync({ url, scale: 1.0 });
+    this.model = await Model.fromGltfAsync({ url, scale: 2.2 });
     this.viewer.scene.primitives.add(this.model);
   }
 
-  teleport(lat: number, lng: number, headingDeg: number, height = 600) {
+  teleport(lat: number, lng: number, headingDeg: number, ground = 0) {
     const h = CMath.toRadians(headingDeg);
     // Aparece 3 km antes del centro para llegar volando hacia él.
     this.lat = lat - (3000 * Math.cos(h)) / R * CMath.DEGREES_PER_RADIAN;
     this.lng = lng - (3000 * Math.sin(h)) / (R * Math.cos(CMath.toRadians(lat))) * CMath.DEGREES_PER_RADIAN;
-    this.height = height;
+    this.ground = ground;
+    this.height = ground + START_ALTITUDE;
     this.heading = this.camHeading = h;
     this.pitch = this.roll = 0;
-    this.speed = 60;
-    this.ground = 0;
+    this.speed = CRUISE;
   }
 
   get position() {
@@ -43,11 +47,9 @@ export class Plane {
   }
 
   update(dt: number, c: Controls) {
-    // Motor: la velocidad tiende a la marcada por el acelerador; subir cuesta velocidad y bajar la da.
-    this.throttle = CMath.clamp(this.throttle + c.throttle * 0.5 * dt, 0, 1);
-    const target = MIN_SPEED + this.throttle * (MAX_SPEED - MIN_SPEED);
-    this.speed += ((target - this.speed) * 0.35 - G * Math.sin(this.pitch) * 0.6) * dt;
-    this.speed = CMath.clamp(this.speed, MIN_SPEED * 0.8, MAX_SPEED * 1.15);
+    const target = c.throttle > 0 ? BOOST : c.throttle < 0 ? SLOW : CRUISE;
+    this.speed += (target - this.speed) * Math.min(1, 1.5 * dt);
+    this.throttle = (this.speed - SLOW) / (BOOST - SLOW);
 
     // Alabeo y cabeceo con retorno suave a nivel cuando se sueltan los mandos.
     this.roll += c.roll * 1.3 * dt;
@@ -97,7 +99,7 @@ export class Plane {
       // La cámara sigue el rumbo con algo de retardo, como una cámara de persecución.
       const diff = CMath.negativePiToPi(this.heading - this.camHeading);
       this.camHeading += diff * Math.min(1, 2.5 * dt);
-      camera.lookAt(pos, new HeadingPitchRange(this.camHeading, -0.18 - this.pitch * 0.3, 70));
+      camera.lookAt(pos, new HeadingPitchRange(this.camHeading, -0.2 - this.pitch * 0.3, 32));
     } else {
       camera.lookAtTransform(Matrix4.IDENTITY);
       camera.setView({

@@ -26,7 +26,7 @@ npm run dev
 | Fotorrealista con clave de Google | Lo mismo, facturado directamente por Google (con cuota gratuita mensual) | Activa *Map Tiles API* en Google Cloud y usa `VITE_GOOGLE_MAPS_API_KEY` |
 | Libre (sin claves) | Ortofoto PNOA del IGN (España, ~25 cm/píxel) y Sentinel-2 en el resto, en plano | Nada |
 
-`VITE_TILE_DETAIL` controla la nitidez de las teselas 3D (8 = alta, 16 = la de Cesium por defecto, más ligera).
+`VITE_TILE_DETAIL` controla la nitidez de las teselas 3D (16 por defecto; 8 = máxima calidad pero carga más lenta).
 
 > ⚠️ El plan gratuito de Cesium ion es para uso no comercial o de evaluación. Para la versión de ayuntamientos/negocios hará falta un plan comercial de Cesium o una clave de Google con facturación. Las atribuciones de Google/Cesium en pantalla son obligatorias: no las ocultes.
 
@@ -36,26 +36,29 @@ npm run dev
 |---|---|
 | ↑ ↓ | subir / bajar morro |
 | ← → | alabear (girar) |
-| W / S (o Shift / Ctrl) | acelerar / reducir |
+| W o Espacio / S | acelerón / freno (mientras se mantienen) |
 | A / D | timón |
 | C | cámara exterior / cabina |
 | M | silenciar motor |
-| Esc | cerrar ficha |
+| Tab | menú de lugares |
+| Esc | cerrar ficha / menú |
 
 En móvil aparecen un joystick y botones táctiles. Se puede hacer clic en cualquier globo para abrir su ficha.
 
 ## Lugares de interés
 
-- **Wikipedia en directo**: artículos geolocalizados con foto alrededor del avión (se van cargando al volar, en cualquier ciudad del mundo).
-- **JSON curados** en `public/places/*.json` (formato de la versión anterior). Sirven para que un ayuntamiento controle su contenido y para marcar lugares patrocinados:
+- **Wikipedia en directo**: artículos geolocalizados con foto, en cualquier ciudad del mundo (buscador con Nominatim en modo libre y Google vía Cesium ion en modo 3D).
+Al elegir una ciudad se cargan de golpe hasta 80 lugares (centro + anillo de 3,5 km), así el recuento de "por descubrir" es fijo.
 
-```json
-{ "id": "bar_pepe", "name": "Bar Pepe", "lat": 43.37, "lng": -8.40,
-  "description": "…", "photos": ["https://…"],
-  "sponsor": { "tier": "gold", "cta": "Reservar mesa", "link": "https://…" } }
-```
+Los lugares patrocinados se representan con el campo `sponsor` de `Poi` (`src/pois.ts`) y se muestran como globo dorado con botón de acción. Falta conectar la fuente de datos de patrocinadores (JSON o backend).
 
-`scripts/scraper.py` (de la versión anterior) genera estos JSON desde Wikipedia sin conexión.
+## Mecánica de juego
+
+Los globos están ocultos: aparecen a 1 km y se descubren al pasar a menos de 220 m. El progreso se guarda en el navegador (`localStorage`). La brújula señala el lugar sin descubrir más cercano.
+
+## Avión de papel
+
+`public/models/paper-plane.glb` se genera con `node scripts/make-paper-plane.mjs` (formas y colores editables en el script).
 
 ## Estructura
 
@@ -64,6 +67,5 @@ src/world.ts    visor Cesium, modo de teselas y geocodificación
 src/flight.ts   física de vuelo y cámaras
 src/pois.ts     carga de lugares, globos y distancias
 src/main.ts     HUD, fichas, controles y bucle principal
-src/sound.ts    sonido de motor sintetizado
-src/cities.ts   ciudades predefinidas
+src/sound.ts    sonido de motor y de descubrimiento sintetizados
 ```

@@ -5,62 +5,94 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>FlyFly · Sobrevuela tu ciudad</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;600;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800;900&display=swap" rel="stylesheet" />
 </head>
 <body>
   <div id="world"></div>
 
   <header id="topbar">
-    <div class="brand">✈ FlyFly</div>
-    <nav id="cities"></nav>
-    <form id="search"><input id="search-input" placeholder="Vuela a cualquier lugar…" autocomplete="off" /></form>
+    <button id="city-btn" title="Cambiar de ciudad">📍 <span id="city-name">—</span></button>
+    <button id="menu-btn" title="Lugares"><span class="balloon-icon">🎈</span><b id="visited">0</b><small>/ <span id="total">0</span></small></button>
   </header>
 
-  <section id="hud">
-    <div><span id="hud-speed">0</span><small>kt</small></div>
-    <div><span id="hud-alt">0</span><small>m</small></div>
-    <div><span id="hud-heading">000</span><small>°</small></div>
-    <div class="throttle"><i id="hud-throttle"></i></div>
-  </section>
+  <aside id="menu" hidden>
+    <div class="menu-head">
+      <h2>Lugares de <span id="menu-city"></span></h2>
+      <button id="menu-close" aria-label="Cerrar">×</button>
+    </div>
+    <div class="progress"><i id="menu-progress"></i></div>
+    <p class="menu-summary" id="menu-summary"></p>
+    <h3>🧭 Pistas</h3>
+    <ul id="menu-hints"></ul>
+    <h3>✓ Descubiertos</h3>
+    <ul id="menu-list"></ul>
+    <p id="menu-empty" class="note">Aún no has descubierto ningún lugar. ¡Busca los globos naranjas!</p>
+  </aside>
 
   <section id="nearest" hidden>
-    <span id="nearest-arrow">➤</span>
-    <div><b id="nearest-name"></b><small id="nearest-dist"></small></div>
+    <svg id="nearest-arrow" viewBox="0 0 24 24" width="30" height="30"><path d="M12 2 L20 20 L12 15 L4 20 Z" /></svg>
+    <span id="nearest-dist"></span>
   </section>
+
+  <div id="speed"><small>🐢</small><div class="bar"><i id="boost"></i></div><small>🚀</small></div>
+
+  <div id="banner" hidden></div>
 
   <aside id="card" hidden>
     <button id="card-close" aria-label="Cerrar">×</button>
-    <div id="card-sponsor" hidden></div>
     <img id="card-img" alt="" />
-    <h2 id="card-title"></h2>
-    <p id="card-text"></p>
-    <a id="card-link" target="_blank" rel="noopener">Leer más en Wikipedia →</a>
+    <div class="card-body">
+      <span id="card-sponsor" hidden></span>
+      <h2 id="card-title"></h2>
+      <p id="card-text"></p>
+      <div class="card-actions">
+        <a id="card-cta" class="btn" target="_blank" rel="noopener" hidden></a>
+        <a id="card-link" target="_blank" rel="noopener">Leer más →</a>
+      </div>
+    </div>
   </aside>
 
-  <div id="counter">🎈 <span id="visited">0</span> / <span id="total">0</span></div>
-  <div id="toast" hidden></div>
+  <div id="loading" hidden>
+    <div class="loading-box">
+      <div class="loading-plane">✈</div>
+      <h2>Volando a <span id="loading-city"></span></h2>
+      <ol id="loading-steps">
+        <li data-step="city">Localizando la ciudad</li>
+        <li data-step="places">Buscando lugares de interés</li>
+        <li data-step="tiles">Cargando la ciudad <span id="tiles-progress"></span></li>
+      </ol>
+      <div class="progress"><i id="loading-progress"></i></div>
+    </div>
+  </div>
 
   <div id="touch">
     <div id="stick"><i></i></div>
     <div class="touch-buttons">
-      <button data-throttle="1">＋</button>
-      <button data-throttle="-1">－</button>
+      <button data-throttle="1">🚀</button>
+      <button data-throttle="-1">🐢</button>
       <button id="cam-btn">🎥</button>
     </div>
   </div>
 
   <div id="intro">
     <div class="intro-box">
-      <h1>✈ FlyFly</h1>
-      <p>Sobrevuela ciudades reales en 3D y acércate a los globos para descubrir sus lugares de interés.</p>
+      <button id="intro-close" aria-label="Cerrar" hidden>×</button>
+      <div class="logo">✈</div>
+      <h1>FlyFly</h1>
+      <p>Vuela sobre cualquier ciudad y encuentra los <b>globos escondidos</b>.<br />Cada uno guarda un lugar que merece la pena descubrir.</p>
+      <form id="search">
+        <input id="search-input" placeholder="¿Dónde quieres volar?" autocomplete="off" disabled />
+        <button id="search-btn" disabled>Buscar</button>
+      </form>
+      <ul id="results"></ul>
+      <p id="search-status" class="note">Preparando el mundo…</p>
       <div class="keys">
         <span><kbd>↑</kbd><kbd>↓</kbd> subir / bajar</span>
         <span><kbd>←</kbd><kbd>→</kbd> girar</span>
-        <span><kbd>W</kbd><kbd>S</kbd> acelerar / frenar</span>
-        <span><kbd>A</kbd><kbd>D</kbd> timón</span>
-        <span><kbd>C</kbd> cámara · <kbd>M</kbd> sonido · <kbd>Esc</kbd> cerrar ficha</span>
+        <span><kbd>W</kbd> / <kbd>Espacio</kbd> acelerar</span>
+        <span><kbd>S</kbd> frenar</span>
+        <span><kbd>C</kbd> cámara</span>
       </div>
-      <button id="start" disabled>Cargando mundo…</button>
       <p id="mode-note" class="note"></p>
     </div>
   </div>

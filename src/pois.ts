@@ -22,35 +22,22 @@ export interface Poi {
 const LANG: string = import.meta.env.VITE_WIKI_LANG || 'es';
 const BALLOON_HEIGHT = 140; // metros sobre el suelo
 // Artículos geolocalizados que no son "lugares de interés" (calles, transporte, colegios, divisiones administrativas).
-const NOISE = /^(calle|avenida|rúa|rua|carrer|paseo de|ronda|autovía|autopista|línea|estación|parada|colegio|instituto|ies |ceip|cp |escuela|club|parroquia)/i;
-const NOISE_DESC = /(municipio|parroquia|distrito|barrio de|localidad|calle|avenida|estación|línea|equipo|club|empresa|colegio|instituto|escuela)/i;
-
-/** Formato de los JSON curados heredado de la versión anterior (public/places/*.json). */
-interface CuratedPlace {
-  id: string; name: string; lat: number; lng: number; description?: string; photos?: string[]; sponsor?: Sponsor;
-}
-
-export async function loadCurated(url: string): Promise<Poi[]> {
-  const res = await fetch(url);
-  if (!res.ok) return [];
-  const places: CuratedPlace[] = await res.json();
-  return places.map((p) => ({
-    id: p.id, name: p.name, lat: p.lat, lng: p.lng, description: p.description, image: p.photos?.[0],
-    wikiTitle: p.description ? undefined : p.name, sponsor: p.sponsor,
-  }));
-}
+const NOISE = /^(calle|avenida|rúa|rua|carrer|paseo de|ronda|autovía|autopista|línea|estación|parada|colegio|instituto|ies |ceip|cp |escuela|club|parroquia|premios?|asesinato|atentado|incendio|batalla|naufragio|elecciones|anexo)/i;
+// Artículos sobre sucesos o ediciones de eventos (llevan un año en el título).
+const EVENT = /\b(1[5-9]|20)\d{2}\b/;
+const NOISE_DESC = /(municipio|parroquia|distrito|barrio de|localidad|calle|avenida|estación|línea|equipo|club|empresa|colegio|instituto|escuela|edición|evento|suceso|asesinato|ceremonia|premio)/i;
 
 /** Artículos de Wikipedia con foto en un radio de 10 km (CORS abierto, sin clave). */
 export async function fetchWikipediaNearby(lat: number, lng: number): Promise<Poi[]> {
   const params = new URLSearchParams({
     action: 'query', format: 'json', origin: '*', generator: 'geosearch',
-    ggscoord: `${lat}|${lng}`, ggsradius: '10000', ggslimit: '50',
+    ggscoord: `${lat}|${lng}`, ggsradius: '5000', ggslimit: '50',
     prop: 'coordinates|pageimages|description', piprop: 'thumbnail', pithumbsize: '800', pilimit: '50', colimit: '50',
   });
   const data = await (await fetch(`https://${LANG}.wikipedia.org/w/api.php?${params}`)).json();
   const pages: any[] = Object.values(data.query?.pages ?? {});
   return pages
-    .filter((p) => p.coordinates && p.thumbnail && !NOISE.test(p.title) && !NOISE_DESC.test(p.description ?? ''))
+    .filter((p) => p.coordinates && p.thumbnail && !NOISE.test(p.title) && !EVENT.test(p.title) && !NOISE_DESC.test(p.description ?? ''))
     .map((p) => ({
       id: `wiki_${p.pageid}`, name: p.title, lat: p.coordinates[0].lat, lng: p.coordinates[0].lon,
       description: p.description, image: p.thumbnail.source, wikiTitle: p.title,
@@ -66,8 +53,8 @@ export async function fetchSummary(title: string): Promise<WikiSummary | undefin
   return { extract: s.extract, image: s.originalimage?.source ?? s.thumbnail?.source, url: s.content_urls?.desktop?.page };
 }
 
-/** Globo aerostático dibujado en canvas: el color indica normal / visitado / patrocinado. */
-function balloonImage(fill: string, stroke: string): HTMLCanvasElement {
+/** Globo aerostático dibujado en canvas con un símbolo: ? (por descubrir), ✓ (descubierto) o ★ (patrocinado). */
+function balloonImage(fill: string, stroke: string, symbol: string): HTMLCanvasElement {
   const c = document.createElement('canvas');
   c.width = 64; c.height = 120;
   const g = c.getContext('2d')!;
@@ -85,6 +72,11 @@ function balloonImage(fill: string, stroke: string): HTMLCanvasElement {
   g.strokeStyle = 'rgba(0,0,0,.35)';
   g.lineWidth = 1.5;
   g.stroke();
+  g.fillStyle = '#fff';
+  g.font = 'bold 30px system-ui, sans-serif';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText(symbol, 32, 32);
   // Cuerdas y barquilla.
   g.beginPath();
   g.moveTo(26, 60); g.lineTo(28, 72); g.moveTo(38, 60); g.lineTo(36, 72);
@@ -99,17 +91,27 @@ function balloonImage(fill: string, stroke: string): HTMLCanvasElement {
 }
 
 const IMAGES = {
-  normal: balloonImage('#ff5a4e', '#b3261e'),
-  visited: balloonImage('#4ecb71', '#1e7a3c'),
-  gold: balloonImage('#ffd54a', '#b8860b'),
-  silver: balloonImage('#dfe6ee', '#7d8a99'),
+  hidden: balloonImage('#ff8a3d', '#c4461b', '?'),
+  discovered: balloonImage('#4ecb71', '#1e7a3c', '✓'),
+  sponsor: balloonImage('#ffd54a', '#b8860b', '★'),
 };
+
+const REVEAL_DISTANCE = 1000; // el globo aparece al acercarse a esta distancia
+const DISCOVER_DISTANCE = 220; // y se descubre al pasar junto a él
+const STORAGE_KEY = 'flyfly:discovered';
+
+function loadDiscovered(): Set<string> {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]'));
+  } catch {
+    return new Set();
+  }
+}
 
 export class PoiLayer {
   readonly pois = new Map<string, Poi>();
-  readonly visited = new Set<string>();
+  readonly discovered = loadDiscovered();
   private entities = new Map<string, Entity>();
-  private queried: { lat: number; lng: number }[] = [];
 
   constructor(private viewer: Viewer) {}
 
@@ -117,7 +119,6 @@ export class PoiLayer {
     this.entities.forEach((e) => this.viewer.entities.remove(e));
     this.entities.clear();
     this.pois.clear();
-    this.queried = [];
   }
 
   add(list: Poi[]) {
@@ -128,62 +129,112 @@ export class PoiLayer {
       const scale = p.sponsor ? 1.25 : 1;
       this.entities.set(p.id, this.viewer.entities.add({
         id: p.id,
+        show: false,
         position: Cartesian3.fromDegrees(p.lng, p.lat, BALLOON_HEIGHT),
         billboard: {
           image: this.image(p),
           heightReference: HeightReference.RELATIVE_TO_GROUND,
           verticalOrigin: VerticalOrigin.BOTTOM,
           scale: 0.9 * scale,
-          scaleByDistance: new NearFarScalar(300, 1.3, 15000, 0.3),
-          distanceDisplayCondition: new DistanceDisplayCondition(0, 20000),
+          scaleByDistance: new NearFarScalar(200, 1.4, 3000, 0.5),
         },
         label: {
-          text: p.name,
+          text: this.label(p),
           heightReference: HeightReference.RELATIVE_TO_GROUND,
-          font: '600 15px "Exo 2", system-ui, sans-serif',
+          font: '800 16px Nunito, system-ui, sans-serif',
           fillColor: Color.WHITE,
-          outlineColor: Color.BLACK.withAlpha(0.8),
+          outlineColor: Color.BLACK.withAlpha(0.7),
           outlineWidth: 4,
           style: LabelStyle.FILL_AND_OUTLINE,
           verticalOrigin: VerticalOrigin.BOTTOM,
           pixelOffset: new Cartesian2(0, -115 * scale),
-          distanceDisplayCondition: new DistanceDisplayCondition(0, 1800),
+          distanceDisplayCondition: new DistanceDisplayCondition(0, 1500),
         },
       }));
     }
   }
 
+  isDiscovered(p: Poi) {
+    return this.discovered.has(p.id);
+  }
+
   private image(p: Poi) {
-    if (p.sponsor) return IMAGES[p.sponsor.tier];
-    return this.visited.has(p.id) ? IMAGES.visited : IMAGES.normal;
+    if (this.isDiscovered(p)) return IMAGES.discovered;
+    return p.sponsor ? IMAGES.sponsor : IMAGES.hidden;
   }
 
-  markVisited(id: string) {
-    this.visited.add(id);
-    const e = this.entities.get(id);
-    const p = this.pois.get(id);
-    if (e?.billboard && p) e.billboard.image = this.image(p) as any;
+  private label(p: Poi) {
+    return this.isDiscovered(p) || p.sponsor ? p.name : '???';
   }
 
-  /** Carga más lugares de Wikipedia cuando el avión se aleja más de 5 km de las zonas ya consultadas. */
-  async explore(lat: number, lng: number) {
-    if (this.queried.some((q) => distance(q, { lat, lng }) < 5000)) return;
-    this.queried.push({ lat, lng });
+  discover(p: Poi) {
+    this.discovered.add(p.id);
     try {
-      this.add(await fetchWikipediaNearby(lat, lng));
-    } catch (err) {
-      console.warn('Wikipedia no disponible', err);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([...this.discovered]));
+    } catch { /* sin almacenamiento: el progreso dura solo esta sesión */ }
+    const e = this.entities.get(p.id);
+    if (e?.billboard && e.label) {
+      e.billboard.image = this.image(p) as any;
+      e.label.text = this.label(p) as any;
     }
   }
 
-  nearest(lat: number, lng: number): { poi: Poi; dist: number } | undefined {
-    let best: { poi: Poi; dist: number } | undefined;
+  /**
+   * Revela los globos cercanos y devuelve el lugar recién descubierto (si lo hay)
+   * y el más cercano aún por descubrir, para la brújula.
+   */
+  update(lat: number, lng: number): { found?: Poi; target?: { poi: Poi; dist: number } } {
+    let found: Poi | undefined;
+    let target: { poi: Poi; dist: number } | undefined;
     for (const poi of this.pois.values()) {
       const dist = distance(poi, { lat, lng });
-      if (!best || dist < best.dist) best = { poi, dist };
+      const entity = this.entities.get(poi.id)!;
+      if (dist < REVEAL_DISTANCE && !entity.show) entity.show = true;
+      if (this.isDiscovered(poi)) continue;
+      if (dist < DISCOVER_DISTANCE && !found) found = poi;
+      else if (!target || dist < target.dist) target = { poi, dist };
     }
-    return best;
+    if (found) this.discover(found);
+    return { found, target };
   }
+
+  /** Cuántos lugares de la zona cargada están descubiertos. */
+  progress() {
+    let n = 0;
+    this.pois.forEach((p) => this.isDiscovered(p) && n++);
+    return { discovered: n, total: this.pois.size };
+  }
+
+  /** Lugares por descubrir más cercanos, para las pistas del menú. */
+  hints(lat: number, lng: number, n = 3) {
+    return [...this.pois.values()]
+      .filter((p) => !this.isDiscovered(p))
+      .map((poi) => ({ poi, dist: distance(poi, { lat, lng }) }))
+      .sort((a, b) => a.dist - b.dist)
+      .slice(0, n);
+  }
+}
+
+const MAX_PER_CITY = 80;
+
+/**
+ * Lugares de una ciudad: consulta Wikipedia en el centro y en un anillo a 3,5 km
+ * (cada consulta devuelve como máximo 50 artículos) y se queda con los más céntricos.
+ */
+export async function loadCityPois(lat: number, lng: number): Promise<Poi[]> {
+  const k = Math.PI / 180;
+  const points = [{ lat, lng }];
+  for (let i = 0; i < 6; i++) {
+    const a = (i * 60) * k;
+    points.push({ lat: lat + (3500 * Math.cos(a)) / 111320, lng: lng + (3500 * Math.sin(a)) / (111320 * Math.cos(lat * k)) });
+  }
+  const results = await Promise.allSettled(points.map((p) => fetchWikipediaNearby(p.lat, p.lng)));
+  const all = new Map<string, Poi>();
+  for (const r of results) if (r.status === 'fulfilled') r.value.forEach((p) => all.set(p.id, p));
+  if (!all.size && results.every((r) => r.status === 'rejected')) throw new Error('Wikipedia no disponible');
+  return [...all.values()]
+    .sort((a, b) => distance(a, { lat, lng }) - distance(b, { lat, lng }))
+    .slice(0, MAX_PER_CITY);
 }
 
 type LatLng = { lat: number; lng: number };

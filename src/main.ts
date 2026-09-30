@@ -1,67 +1,204 @@
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 import './style.css';
-import { CITIES, City } from './cities';
 import { Controls, Plane } from './flight';
-import { bearing, distance, fetchSummary, loadCurated, Poi, PoiLayer } from './pois';
-import { createWorld, geocode, worldMode } from './world';
+import { bearing, distance, fetchSummary, loadCityPois, Poi, PoiLayer } from './pois';
+import { createWorld, geocode, GeoResult, groundHeight, World } from './world';
 import { EngineSound } from './sound';
 import { defined, ScreenSpaceEventHandler, ScreenSpaceEventType } from 'cesium';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
-const OPEN_DISTANCE = 350; // metros: la ficha se abre al pasar cerca del globo
-const CLOSE_DISTANCE = 900;
 
-const viewer = await createWorld($('world'));
+const world = await createWorld($('world'));
+const { viewer } = world;
 const plane = new Plane(viewer);
 const pois = new PoiLayer(viewer);
 const sound = new EngineSound();
-await plane.load('models/plane.glb');
+await plane.load('models/paper-plane.glb');
 
-$('mode-note').textContent = {
-  google: 'Modo fotorrealista 3D (Google Photorealistic 3D Tiles).',
-  ion: 'Modo fotorrealista 3D (Google Photorealistic 3D Tiles vía Cesium ion).',
-  free: 'Modo gratuito: ortofoto PNOA/Sentinel-2 sin relieve. Añade un token de Cesium ion en .env para ver la ciudad en 3D real.',
-}[worldMode];
+$('mode-note').textContent = world.error
+  ? `No se pudo cargar la ciudad en 3D (${world.error}). Revisa el token de Cesium ion. Mostrando ortofoto plana.`
+  : world.mode === 'free'
+    ? 'Modo plano (ortofoto). Añade un token de Cesium ion para ver la ciudad en 3D.'
+    : '';
 
-// ---------- Ciudades y búsqueda ----------
-async function flyTo(city: City) {
-  pois.clear();
-  plane.teleport(city.lat, city.lng, city.heading);
-  if (city.places) pois.add(await loadCurated(city.places));
-  await pois.explore(city.lat, city.lng);
-  closeCard();
-  toast(`Rumbo a ${city.name}`);
-  document.querySelectorAll('#cities button').forEach((b) => b.classList.toggle('active', b.textContent === city.name));
+// ---------- Búsqueda de ciudad ----------
+let flying = false;
+let paused = true;
+const LAST_CITY_KEY = 'flyfly:lastCity';
+
+const searchInput = $<HTMLInputElement>('search-input');
+searchInput.disabled = $<HTMLButtonElement>('search-btn').disabled = false;
+$('search-status').textContent = '';
+try { searchInput.value = localStorage.getItem(LAST_CITY_KEY) ?? ''; } catch { /* sin almacenamiento */ }
+searchInput.focus();
+
+function openSearch() {
+  $('intro').hidden = false;
+  $('intro-close').hidden = !flying;
+  $('results').innerHTML = '';
+  paused = true;
+  searchInput.select();
+  searchInput.focus();
 }
-
-for (const city of CITIES) {
-  const b = document.createElement('button');
-  b.textContent = city.name;
-  b.onclick = () => flyTo(city);
-  $('cities').append(b);
-}
+$('city-btn').onclick = openSearch;
+$('intro-close').onclick = () => { $('intro').hidden = true; paused = false; };
 
 $('search').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const input = $<HTMLInputElement>('search-input');
-  const query = input.value.trim();
+  const query = searchInput.value.trim();
   if (!query) return;
-  input.blur();
+  const status = $('search-status');
+  const list = $('results');
+  list.innerHTML = '';
+  status.textContent = 'Buscando…';
+  let hits: GeoResult[] = [];
   try {
-    const hit = await geocode(viewer, query);
-    if (hit) await flyTo({ id: 'search', name: hit.name, lat: hit.lat, lng: hit.lng, heading: plane.heading * 57.3 });
-    else toast('No encontré ese lugar');
+    hits = await geocode(world, query);
   } catch {
-    toast('Búsqueda no disponible ahora mismo');
+    status.textContent = 'La búsqueda no está disponible ahora mismo. Inténtalo de nuevo.';
+    return;
+  }
+  status.textContent = hits.length ? '' : 'No encontré ese lugar. Prueba con otro nombre.';
+  if (hits.length === 1) return startFlight(hits[0]);
+  for (const hit of hits) {
+    const li = document.createElement('li');
+    li.innerHTML = `<b></b><small></small>`;
+    li.querySelector('b')!.textContent = hit.name;
+    li.querySelector('small')!.textContent = hit.detail;
+    li.onclick = () => startFlight(hit);
+    list.append(li);
   }
 });
+
+async function startFlight(place: GeoResult) {
+  try { localStorage.setItem(LAST_CITY_KEY, place.name); } catch { /* sin almacenamiento */ }
+  sound.start();
+  $('intro').hidden = true;
+  await flyTo(place);
+  flying = true;
+  paused = false;
+  document.body.classList.add('flying');
+  banner(place.name, 'city');
+  if (!pois.pois.size) setTimeout(() => banner('No se encontraron lugares aquí. Prueba con otra ciudad.', 'info'), 2200);
+}
+
+// ---------- Pantalla de carga ----------
+function step(name: string, state: 'active' | 'done' | 'fail') {
+  const li = document.querySelector<HTMLElement>(`#loading-steps [data-step="${name}"]`)!;
+  li.className = state;
+}
+
+function setProgress(fraction: number) {
+  $('loading-progress').style.width = `${Math.round(fraction * 100)}%`;
+}
+
+/** Espera a que carguen las teselas visibles mostrando el avance (máximo 20 s). */
+function loadTiles(w: World): Promise<void> {
+  return new Promise((resolve) => {
+    let maxPending = 1;
+    const update = (pending: number, processing: number) => {
+      const left = pending + processing;
+      maxPending = Math.max(maxPending, left);
+      const f = 1 - left / maxPending;
+      setProgress(0.4 + 0.6 * f);
+      $('tiles-progress').textContent = `${Math.round(f * 100)}%`;
+    };
+    const finish = () => { clearTimeout(timer); removeProgress(); removeDone(); resolve(); };
+    const timer = setTimeout(finish, 20000);
+    const removeProgress = w.tileset
+      ? w.tileset.loadProgress.addEventListener(update)
+      : w.viewer.scene.globe.tileLoadProgressEvent.addEventListener((n: number) => update(n, 0));
+    const removeDone = w.tileset
+      ? w.tileset.allTilesLoaded.addEventListener(finish)
+      : w.viewer.scene.globe.tileLoadProgressEvent.addEventListener((n: number) => n === 0 && finish());
+  });
+}
+
+async function flyTo(place: GeoResult) {
+  paused = true;
+  closeCard();
+  closeMenu();
+  pois.clear();
+  $('city-name').textContent = $('menu-city').textContent = $('loading-city').textContent = place.name;
+  document.querySelectorAll('#loading-steps li').forEach((li) => (li.className = ''));
+  $('tiles-progress').textContent = '';
+  setProgress(0);
+  $('loading').hidden = false;
+
+  // 1. Coloca la cámara sobre la ciudad para que empiecen a cargar sus teselas y mide la altura del suelo.
+  step('city', 'active');
+  plane.teleport(place.lat, place.lng, 0);
+  plane.render(0);
+  const ground = await groundHeight(world, place.lat, place.lng);
+  plane.teleport(place.lat, place.lng, 0, ground);
+  plane.render(0);
+  step('city', 'done');
+  setProgress(0.15);
+
+  // 2. Lugares de interés (Wikipedia) mientras siguen cargando las teselas.
+  step('places', 'active');
+  try {
+    pois.add(await loadCityPois(place.lat, place.lng));
+    step('places', 'done');
+  } catch {
+    step('places', 'fail');
+  }
+  setProgress(0.4);
+
+  // 3. Edificios y terreno.
+  step('tiles', 'active');
+  await loadTiles(world);
+  step('tiles', 'done');
+  setProgress(1);
+  updateHud();
+  await new Promise((r) => setTimeout(r, 400));
+  $('loading').hidden = true;
+}
+
+// ---------- Menú de lugares ----------
+function renderMenu() {
+  const { discovered, total } = pois.progress();
+  const left = total - discovered;
+  $('menu-summary').innerHTML = `<b>${discovered}</b> ${discovered === 1 ? 'descubierto' : 'descubiertos'} · <b>${left}</b> por descubrir`;
+  $('menu-progress').style.width = total ? `${(discovered / total) * 100}%` : '0';
+
+  const hints = $('menu-hints');
+  hints.innerHTML = '';
+  for (const { poi, dist } of pois.hints(plane.lat, plane.lng)) {
+    const rel = bearing(plane, poi) - (plane.heading * 180) / Math.PI;
+    const li = document.createElement('li');
+    li.innerHTML = `<span class="hint-arrow" style="transform: rotate(${rel}deg)">▲</span><b>???</b><small>${dist > 1000 ? `${(dist / 1000).toFixed(1)} km` : `${Math.round(dist)} m`}</small>`;
+    hints.append(li);
+  }
+
+  const list = $('menu-list');
+  list.innerHTML = '';
+  const found = [...pois.pois.values()].filter((p) => pois.isDiscovered(p));
+  $('menu-empty').hidden = found.length > 0;
+  for (const poi of found) {
+    const li = document.createElement('li');
+    li.className = 'found';
+    li.innerHTML = `${poi.image ? `<img src="${poi.image}" alt="" />` : '<span class="thumb">✓</span>'}<b></b>`;
+    li.querySelector('b')!.textContent = poi.name;
+    li.onclick = () => openCard(poi);
+    list.append(li);
+  }
+}
+
+function closeMenu() {
+  $('menu').hidden = true;
+}
+$('menu-btn').onclick = () => {
+  $('menu').hidden = !$('menu').hidden;
+  if (!$('menu').hidden) renderMenu();
+};
+$('menu-close').onclick = closeMenu;
 
 // ---------- Ficha del lugar ----------
 let openPoi: Poi | undefined;
 
 async function openCard(poi: Poi) {
   openPoi = poi;
-  pois.markVisited(poi.id);
   $('card-title').textContent = poi.name;
   $('card-text').textContent = poi.description ?? '';
   const img = $<HTMLImageElement>('card-img');
@@ -72,7 +209,13 @@ async function openCard(poi: Poi) {
   link.href = poi.url ?? '#';
   const sponsor = $('card-sponsor');
   sponsor.hidden = !poi.sponsor;
-  if (poi.sponsor) sponsor.innerHTML = `⭐ Patrocinado${poi.sponsor.link ? ` · <a href="${poi.sponsor.link}" target="_blank" rel="noopener">${poi.sponsor.cta ?? 'Visitar'}</a>` : ''}`;
+  sponsor.textContent = '★ Recomendado';
+  const cta = $<HTMLAnchorElement>('card-cta');
+  cta.hidden = !poi.sponsor?.link;
+  if (poi.sponsor?.link) {
+    cta.href = poi.sponsor.link;
+    cta.textContent = poi.sponsor.cta ?? 'Visitar';
+  }
   $('card').hidden = false;
 
   if (poi.wikiTitle) {
@@ -91,11 +234,12 @@ function closeCard() {
 }
 $('card-close').onclick = closeCard;
 
-// Clic/toque sobre un globo abre su ficha aunque esté lejos.
+// Clic/toque sobre un globo ya visible abre su ficha (si está descubierto).
 new ScreenSpaceEventHandler(viewer.scene.canvas).setInputAction((e: { position: any }) => {
   const picked = viewer.scene.pick(e.position);
   const poi = defined(picked) && pois.pois.get(picked.id?.id);
-  if (poi) openCard(poi);
+  if (poi && pois.isDiscovered(poi)) openCard(poi);
+  else if (poi) banner('¡Acércate para descubrirlo!', 'info');
 }, ScreenSpaceEventType.LEFT_CLICK);
 
 // ---------- Controles ----------
@@ -108,7 +252,8 @@ window.addEventListener('keydown', (e) => {
   keys.add(e.code);
   if (e.code === 'KeyC') plane.toggleCamera();
   if (e.code === 'KeyM') sound.toggle();
-  if (e.code === 'Escape') closeCard();
+  if (e.code === 'Escape') { closeCard(); closeMenu(); }
+  if (e.code === 'Tab') { e.preventDefault(); $('menu-btn').click(); }
   if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
 });
 window.addEventListener('keyup', (e) => keys.delete(e.code));
@@ -122,7 +267,7 @@ function readControls(): Controls {
     pitch: axis(['ArrowDown'], ['ArrowUp']) - stick.y,
     roll: axis(['ArrowLeft'], ['ArrowRight']) + stick.x,
     yaw: axis(['KeyA'], ['KeyD']),
-    throttle: axis(['KeyS', 'ControlLeft'], ['KeyW', 'ShiftLeft']) + touchThrottle,
+    throttle: axis(['KeyS', 'ControlLeft'], ['KeyW', 'Space', 'ShiftLeft']) + touchThrottle,
   };
 }
 
@@ -148,45 +293,53 @@ document.querySelectorAll<HTMLButtonElement>('[data-throttle]').forEach((b) => {
 $('cam-btn').onclick = () => plane.toggleCamera();
 
 // ---------- HUD ----------
-let toastTimer = 0;
-function toast(msg: string) {
-  const t = $('toast');
-  t.textContent = msg;
-  t.hidden = false;
-  clearTimeout(toastTimer);
-  toastTimer = window.setTimeout(() => (t.hidden = true), 2500);
+let bannerTimer = 0;
+function banner(text: string, kind: 'found' | 'city' | 'info') {
+  const b = $('banner');
+  b.className = kind;
+  b.innerHTML = kind === 'found' ? `<small>¡Descubierto!</small>${text}` : text;
+  b.hidden = false;
+  // Reinicia la animación de entrada.
+  b.style.animation = 'none';
+  void b.offsetWidth;
+  b.style.animation = '';
+  clearTimeout(bannerTimer);
+  bannerTimer = window.setTimeout(() => (b.hidden = true), kind === 'found' ? 2600 : 2000);
 }
 
 function updateHud() {
-  $('hud-speed').textContent = String(Math.round(plane.speed * 1.944));
-  $('hud-alt').textContent = String(Math.round(plane.height - plane.ground));
-  $('hud-heading').textContent = String(Math.round((plane.heading * 180) / Math.PI) % 360).padStart(3, '0');
-  $('hud-throttle').style.height = `${plane.throttle * 100}%`;
-  $('visited').textContent = String(pois.visited.size);
-  $('total').textContent = String(pois.pois.size);
+  $('boost').style.width = `${plane.throttle * 100}%`;
+  const { found, target } = pois.update(plane.lat, plane.lng);
+  if (found) {
+    sound.chime();
+    banner(found.name, 'found');
+    openCard(found);
+  }
+  const { discovered, total } = pois.progress();
+  $('visited').textContent = String(discovered);
+  $('total').textContent = String(total);
 
-  const near = pois.nearest(plane.lat, plane.lng);
-  $('nearest').hidden = !near;
-  if (!near) return;
-  $('nearest-name').textContent = near.poi.name;
-  $('nearest-dist').textContent = near.dist > 1000 ? `${(near.dist / 1000).toFixed(1)} km` : `${Math.round(near.dist)} m`;
-  const rel = bearing(plane, near.poi) - (plane.heading * 180) / Math.PI;
-  $('nearest-arrow').style.transform = `rotate(${rel - 90}deg)`;
-
-  if (near.dist < OPEN_DISTANCE && openPoi !== near.poi) openCard(near.poi);
-  if (openPoi && distance(plane, openPoi) > CLOSE_DISTANCE) closeCard();
+  // Brújula hacia el lugar más cercano por descubrir, sin revelar su nombre.
+  $('nearest').hidden = !target;
+  if (target) {
+    $('nearest-dist').textContent = target.dist > 1000 ? `${(target.dist / 1000).toFixed(1)} km` : `${Math.round(target.dist)} m`;
+    const rel = bearing(plane, target.poi) - (plane.heading * 180) / Math.PI;
+    $('nearest-arrow').style.transform = `rotate(${rel}deg)`;
+  }
+  if (openPoi && distance(plane, openPoi) > 1200) closeCard();
+  if (!$('menu').hidden) renderMenu();
 }
 
 // ---------- Bucle principal ----------
 let last = performance.now();
 let slowTimer = 0;
-let started = false;
 
 viewer.scene.preUpdate.addEventListener(() => {
   const now = performance.now();
   const dt = Math.min((now - last) / 1000, 0.1);
   last = now;
-  if (started) plane.update(dt, readControls());
+  if (paused) return;
+  plane.update(dt, readControls());
   plane.render(dt);
   sound.update(plane.throttle, plane.speed);
 
@@ -195,16 +348,8 @@ viewer.scene.preUpdate.addEventListener(() => {
     slowTimer = 0;
     plane.sampleGround();
     updateHud();
-    pois.explore(plane.lat, plane.lng);
   }
 });
 
-await flyTo(CITIES[0]);
-const start = $<HTMLButtonElement>('start');
-start.disabled = false;
-start.textContent = 'Despegar';
-start.onclick = () => {
-  started = true;
-  sound.start();
-  $('intro').remove();
-};
+// Acceso para depuración en desarrollo (no se incluye en la web publicada).
+if (import.meta.env.DEV) Object.assign(window, { flyfly: { plane, pois, startFlight } });
