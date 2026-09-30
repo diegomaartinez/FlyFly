@@ -1,69 +1,62 @@
+<div align="center">
+
 # ✈ FlyFly
 
-Sobrevuela ciudades reales en 3D con una avioneta y acércate a los globos para descubrir sus lugares de interés.
+### Sobrevuela tu ciudad. Descubre cada rincón desde el cielo.
 
-## Arrancar
+**[▶ Despegar ahora](https://diegomaartinez.github.io/FlyFly/)**
 
-```bash
-npm install
-cp .env.example .env   # y rellena VITE_CESIUM_ION_TOKEN (ver abajo)
-npm run dev
-```
+</div>
 
-## Publicar en GitHub Pages
+---
 
-1. **Settings → Pages → Source:** *GitHub Actions*.
-2. **Settings → Secrets and variables → Actions → New repository secret:** `VITE_CESIUM_ION_TOKEN` con tu token.
-3. Cada push a `main` compila y publica en `https://<usuario>.github.io/FlyFly/`.
+FlyFly te pone a los mandos de una avioneta sobre ciudades reales en 3D. Edificios, calles, playas y monumentos tal y como son, vistos desde el aire con la misma calidad que Google Earth.
 
-> El token acaba dentro del JavaScript público (es inevitable en una web sin servidor). En Cesium ion, restringe el token a la URL de tu GitHub Pages para que nadie pueda usarlo desde otro sitio.
+Mientras vuelas, **globos aerostáticos** flotan sobre los lugares más interesantes de la ciudad. Acércate a uno y descubrirás su historia, sus fotos y todo lo que merece la pena saber antes de visitarlo en persona.
 
-## Calidad visual (gratis)
+## ¿Qué puedes hacer?
 
-| Modo | Qué se ve | Cómo activarlo |
+- 🌍 **Volar sobre ciudades reales en 3D**: A Coruña, Madrid, Bilbao y Barcelona, o cualquier otro lugar del mundo con el buscador.
+- 🎈 **Descubrir lugares de interés**: monumentos, museos, playas, miradores y rincones con historia aparecen como globos sobre la ciudad.
+- 📖 **Conocer cada lugar**: al pasar cerca de un globo se abre una ficha con fotos y una descripción del sitio.
+- 🏆 **Completar tu recorrido**: los globos visitados cambian de color y un contador muestra cuántos llevas.
+- 🎥 **Elegir tu vista**: cámara exterior para ver tu avioneta sobre la ciudad o vista desde la cabina para sentirte piloto.
+- 📱 **Jugar donde quieras**: funciona en el navegador del ordenador, la tableta o el móvil, sin instalar nada.
+
+## Cómo se vuela
+
+| | Ordenador | Móvil |
 |---|---|---|
-| **Fotorrealista vía Cesium ion** (recomendado) | Ciudades en 3D real (Google Photorealistic 3D Tiles), como Google Earth | Crea una cuenta gratuita en [ion.cesium.com](https://ion.cesium.com/tokens), añade el asset *Google Photorealistic 3D Tiles* desde *Asset Depot* y pon el token en `VITE_CESIUM_ION_TOKEN` |
-| Fotorrealista con clave de Google | Lo mismo, facturado directamente por Google (con cuota gratuita mensual) | Activa *Map Tiles API* en Google Cloud y usa `VITE_GOOGLE_MAPS_API_KEY` |
-| Libre (sin claves) | Ortofoto PNOA del IGN (España, ~25 cm/píxel) y Sentinel-2 en el resto, en plano | Nada |
+| Subir / bajar | ↑ ↓ | Joystick arriba / abajo |
+| Girar | ← → | Joystick a los lados |
+| Acelerar / frenar | W / S | Botones ＋ / － |
+| Cambiar cámara | C | Botón 🎥 |
+| Silenciar motor | M | |
+| Cerrar ficha | Esc | ✕ |
 
-`VITE_TILE_DETAIL` controla la nitidez de las teselas 3D (8 = alta, 16 = la de Cesium por defecto, más ligera).
+También puedes tocar o hacer clic en cualquier globo para abrir su ficha sin necesidad de acercarte.
 
-> ⚠️ El plan gratuito de Cesium ion es para uso no comercial o de evaluación. Para la versión de ayuntamientos/negocios hará falta un plan comercial de Cesium o una clave de Google con facturación. Las atribuciones de Google/Cesium en pantalla son obligatorias: no las ocultes.
+## Para ayuntamientos y oficinas de turismo
 
-## Controles
+FlyFly es un escaparate turístico diferente: los visitantes exploran la ciudad desde el aire antes de llegar y descubren los lugares que el ayuntamiento quiere destacar.
 
-| Teclado | Acción |
-|---|---|
-| ↑ ↓ | subir / bajar morro |
-| ← → | alabear (girar) |
-| W / S (o Shift / Ctrl) | acelerar / reducir |
-| A / D | timón |
-| C | cámara exterior / cabina |
-| M | silenciar motor |
-| Esc | cerrar ficha |
+- Contenido seleccionado por la propia ciudad: lugares, textos y fotografías.
+- Imagen adaptable a la identidad visual del municipio.
+- Una experiencia que se comparte y que atrae a público joven.
 
-En móvil aparecen un joystick y botones táctiles. Se puede hacer clic en cualquier globo para abrir su ficha.
+## Para negocios locales
 
-## Lugares de interés
+Restaurantes, hoteles, tiendas y experiencias pueden aparecer en el mapa con un **globo dorado destacado**, con su propia ficha y un botón directo para reservar, comprar o visitar su web.
 
-- **Wikipedia en directo**: artículos geolocalizados con foto alrededor del avión (se van cargando al volar, en cualquier ciudad del mundo).
-- **JSON curados** en `public/places/*.json` (formato de la versión anterior). Sirven para que un ayuntamiento controle su contenido y para marcar lugares patrocinados:
+## Próximamente
 
-```json
-{ "id": "bar_pepe", "name": "Bar Pepe", "lat": 43.37, "lng": -8.40,
-  "description": "…", "photos": ["https://…"],
-  "sponsor": { "tier": "gold", "cta": "Reservar mesa", "link": "https://…" } }
-```
+- Rutas temáticas guiadas (arte, gastronomía, historia…)
+- Más ciudades preconfiguradas
+- Versión en varios idiomas
+- Panel para que los negocios gestionen su presencia
 
-`scripts/scraper.py` (de la versión anterior) genera estos JSON desde Wikipedia sin conexión.
+---
 
-## Estructura
+<sub>Imágenes 3D: Google Photorealistic 3D Tiles vía Cesium ion. Ortofotos: PNOA © Instituto Geográfico Nacional de España y Sentinel-2 cloudless por EOX. Información de lugares: Wikipedia (CC BY-SA). Búsqueda: OpenStreetMap.</sub>
 
-```
-src/world.ts    visor Cesium, modo de teselas y geocodificación
-src/flight.ts   física de vuelo y cámaras
-src/pois.ts     carga de lugares, globos y distancias
-src/main.ts     HUD, fichas, controles y bucle principal
-src/sound.ts    sonido de motor sintetizado
-src/cities.ts   ciudades predefinidas
-```
+<sub>¿Eres desarrollador? Consulta la [guía de desarrollo](docs/DESARROLLO.md).</sub>
