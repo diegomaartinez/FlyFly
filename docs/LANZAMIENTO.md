@@ -70,7 +70,7 @@ Calcula el coste con el tráfico esperado antes de lanzar campañas.
 6. Amplía la política de seguridad: en `public/_headers` sustituye la línea `Content-Security-Policy` por esta y revisa la consola del navegador tras publicar (Google cambia dominios a veces):
 
 ```
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://*.googlesyndication.com https://*.google.com https://*.gstatic.com https://*.doubleclick.net https://*.googletagservices.com https://*.adtrafficquality.google https://fundingchoicesmessages.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' data: blob: https://*.googleapis.com https://*.cesium.com https://*.wikipedia.org https://*.wikimedia.org https://nominatim.openstreetmap.org https://www.ign.es https://tiles.maps.eox.at https://formspree.io https://api.web3forms.com https://*.google.com https://*.googlesyndication.com https://*.doubleclick.net https://*.adtrafficquality.google; frame-src https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com https://fundingchoicesmessages.google.com; worker-src 'self' blob:; child-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://cloud.umami.is https://plausible.io https://static.cloudflareinsights.com https://*.googlesyndication.com https://*.google.com https://*.gstatic.com https://*.doubleclick.net https://*.googletagservices.com https://*.adtrafficquality.google https://fundingchoicesmessages.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' data: blob: https://*.googleapis.com https://*.cesium.com https://*.wikipedia.org https://*.wikimedia.org https://nominatim.openstreetmap.org https://www.ign.es https://tiles.maps.eox.at https://formspree.io https://api.web3forms.com https://cloud.umami.is https://api-gateway.umami.dev https://plausible.io https://static.cloudflareinsights.com https://cloudflareinsights.com https://*.google.com https://*.googlesyndication.com https://*.doubleclick.net https://*.adtrafficquality.google; frame-src https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com https://fundingchoicesmessages.google.com; worker-src 'self' blob:; child-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests
 ```
 
 ## 6. Patrocinios de negocios locales
@@ -108,8 +108,9 @@ Antes de cobrar:
 
 Flujo sin servidor propio: el anunciante envía su solicitud, tú la revisas y la publicas.
 
-1. **Tarifas**: edita `public/data/tarifas.json` (nombre, descripción y precio de cada forma de aparecer: lugar, globo, ovni, avioneta).
-2. **Cobro**: crea en Stripe un *Payment Link* para cada tarifa y pon su URL en el campo `pago`. La página lo ofrece tras enviar la solicitud, con el email y la referencia del anuncio ya rellenos. Avisa de que el anuncio no se publica hasta revisarlo y que si se rechaza se devuelve el dinero (ya está en las condiciones).
+1. **Tarifas**: edita `public/data/tarifas.json`. Cada forma de aparecer tiene `precioMes` (en euros, sin IVA) y, si quieres plazas limitadas, `limite` (máximo por ciudad: el juego muestra solo los primeros de `anunciantes.json` y la página Anúnciate lo indica). `descuentos` fija el porcentaje por contratar 6 o 12 meses y `oferta` el texto de la oferta vigente (bórralo para quitarla). Precios de lanzamiento: lugar 5 €, globo 12 €, ovni 19 € (5 por ciudad) y avioneta 29 € (3 por ciudad) al mes, 10 % de descuento a 6 meses y 20 % a 12. Quien contrata a precio de lanzamiento lo mantiene mientras renueve sin interrupción, así que puedes subir los precios para los nuevos cuando haya demanda (por ejemplo, cuando se llenen las plazas de avioneta u ovni en una ciudad, o cuando tengas cifras de visitas que enseñar) sin enfadar a los primeros. Anota en cada anuncio el precio al que contrató para respetarlo en las renovaciones.
+2. **Cobro**: lo más sencillo al principio es cobrar a mano tras aprobar la solicitud, con una factura de Stripe (*Invoices*) o una transferencia, porque así aplicas el descuento por duración y la oferta. Si prefieres enlaces de pago, crea en Stripe un *Payment Link* para cada tarifa y pon su URL en el campo `pago`: la página lo ofrece tras enviar la solicitud, con el email y la referencia del anuncio ya rellenos. Avisa de que el anuncio no se publica hasta revisarlo y que si se rechaza se devuelve el dinero (ya está en las condiciones).
+   - **Particulares**: el formulario pregunta si se contrata como empresa o autónomo o como particular. Los particulares tienen 14 días de desistimiento y deben marcar una casilla para pedir que el anuncio se publique antes; la solicitud llega con esa constancia y la fecha (campo `desistimiento`). Guárdala junto a la factura.
 3. **Recepción de solicitudes**: crea un formulario en un servicio que admita archivos adjuntos (Formspree, Web3Forms u otro; comprueba que tu plan permite adjuntos) y pon su URL en la variable `VITE_FORM_ENDPOINT`. Si usas otro servicio, añade su dominio a `connect-src` en `public/_headers`. Sin servicio, la página ofrece enviar la solicitud por email (el de `titular.js`) y descargar un archivo con las fotos.
 4. **Revisión**: comprueba que el contenido cumple las condiciones para anunciantes, que la ubicación es correcta y que el pago está hecho.
 5. **Publicación**: si te llegó el archivo descargado, ejecuta `node scripts/importar-anuncio.mjs solicitud-flyfly-xxx.json`. Si llegó por el servicio de formularios, guarda las fotos en `public/anunciantes/` con los nombres indicados y pega el bloque `anuncio` en `public/data/anunciantes.json`. Haz commit y push.
@@ -117,6 +118,29 @@ Flujo sin servidor propio: el anunciante envía su solicitud, tú la revisas y l
 7. **Factura** a cada anunciante con IVA.
 
 Textos legales relacionados: `public/legal/condiciones-anunciantes.html` (rellena plazos y devoluciones) y la sección «Si te anuncias en FlyFly» de la política de privacidad (indica el servicio de formularios y la pasarela de pago que uses).
+
+## 7 bis. Estadísticas anónimas (cifras para los anunciantes)
+
+FlyFly puede contar visitas y eventos sin cookies, así que no hace falta pedir consentimiento ni cambiar el aviso de cookies. Activa **uno** de estos servicios con su variable (en GitHub: *Settings → Secrets and variables → Actions → Variables*):
+
+| Servicio | Variable | Coste | Qué mide |
+|---|---|---|---|
+| **Umami Cloud** (recomendado) | `VITE_UMAMI_ID` = id del sitio | Gratis hasta 100.000 eventos al mes | Visitas y eventos con datos |
+| Plausible | `VITE_PLAUSIBLE_DOMAIN` = tu dominio | Desde unos 9 € al mes | Visitas y eventos con datos |
+| Cloudflare Web Analytics | `VITE_CF_BEACON` = token | Gratis | Solo visitas (sin eventos) |
+
+Si alojas tu propio Umami o Plausible, indica la URL del script en `VITE_UMAMI_SRC` o `VITE_PLAUSIBLE_SRC` y añade su dominio a `script-src` y `connect-src` en `public/_headers`.
+
+Eventos que se registran (sin datos personales):
+
+- `ciudad`: ciudad visitada y modo de juego.
+- `ciudad-completada`: ciudad en la que se han encontrado todos los lugares.
+- `anuncio-visto`: un anuncio ha estado a la vista del jugador a menos de 1,5 km (una vez por anuncio y visita a la ciudad).
+- `anuncio-ficha`: se ha abierto la ficha de un anuncio.
+- `anuncio-clic`: se ha pulsado el botón del anuncio (reservar, comprar…).
+- `solicitud-anuncio`: alguien ha enviado una solicitud desde Anúnciate.
+
+Con esto puedes enseñar a un negocio cuántas personas visitan su ciudad en FlyFly y, una vez anunciado, cuántas han visto su anuncio y cuántas han pulsado su botón. Completa en la política de privacidad la línea del servicio de estadísticas que uses.
 
 ## 8. Versión para ayuntamientos
 
@@ -149,6 +173,7 @@ Textos legales relacionados: `public/legal/condiciones-anunciantes.html` (rellen
 - [ ] AdSense aprobado, mensaje RGPD activo y CSP ampliada (si hay anuncios)
 - [ ] Contrato de patrocinio preparado (si hay patrocinadores)
 - [ ] Tarifas, enlaces de pago y servicio de formularios configurados (si vendes anuncios)
+- [ ] Estadísticas anónimas activadas (Umami, Plausible o Cloudflare) y anotadas en la política de privacidad
 - [ ] Condiciones para anunciantes completadas y revisadas
 - [ ] Marca comprobada en OEPM y EUIPO
 - [ ] Probado en móvil y ordenador con el dominio definitivo

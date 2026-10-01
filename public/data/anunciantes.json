@@ -1,1 +1,106 @@
-[]
+[
+  {
+    "id": "ejemplo-marisqueria-dorna",
+    "name": "Marisquería A Dorna",
+    "type": "lugar",
+    "lat": 43.3711,
+    "lng": -8.3968,
+    "color": "#0ca678",
+    "description": "Marisco y cocina gallega (ejemplo)",
+    "text": "Anunciante de ejemplo. Así se ve un negocio que contrata un lugar en el mapa: una tarjeta junto a su local con su nombre, su frase y el color que elija.",
+    "link": "https://example.com",
+    "cta": "Reservar",
+    "until": "2027-12-31"
+  },
+  {
+    "id": "ejemplo-cafe-orzan",
+    "name": "Café Orzán",
+    "type": "lugar",
+    "lat": 43.3722,
+    "lng": -8.4028,
+    "color": "#f08c00",
+    "description": "Desayunos frente a la playa (ejemplo)",
+    "text": "Anunciante de ejemplo de tipo lugar, con otro color de recuadro.",
+    "link": "https://example.com",
+    "cta": "Ver carta",
+    "until": "2027-12-31"
+  },
+  {
+    "id": "ejemplo-hotel-bahia",
+    "name": "Hotel Bahía Azul",
+    "type": "globo",
+    "lat": 43.3686,
+    "lng": -8.3936,
+    "color": "#d6336c",
+    "description": "Habitaciones con vistas a la dársena (ejemplo)",
+    "text": "Anunciante de ejemplo de tipo globo aerostático: flota a 160 m sobre su ubicación con gajos de su color.",
+    "link": "https://example.com",
+    "cta": "Reservar",
+    "until": "2027-12-31"
+  },
+  {
+    "id": "ejemplo-escuela-surf",
+    "name": "Escuela de Surf Riazor",
+    "type": "globo",
+    "lat": 43.3684,
+    "lng": -8.4072,
+    "color": "#1c7ed6",
+    "description": "Clases para todos los niveles (ejemplo)",
+    "text": "Anunciante de ejemplo de tipo globo sobre la playa de Riazor.",
+    "link": "https://example.com",
+    "cta": "Pedir información",
+    "until": "2027-12-31"
+  },
+  {
+    "id": "ejemplo-tienda-galaxia",
+    "name": "Juguetería Galaxia",
+    "type": "ovni",
+    "lat": 43.3665,
+    "lng": -8.4010,
+    "color": "#7048e8",
+    "description": "Juguetes y juegos de mesa (ejemplo)",
+    "text": "Anunciante de ejemplo de tipo ovni gigante: una nave tres veces más grande que la del jugador, girando sobre su local.",
+    "link": "https://example.com",
+    "cta": "Comprar",
+    "until": "2027-12-31"
+  },
+  {
+    "id": "ejemplo-academia-estrellas",
+    "name": "Planetario Estrella Polar",
+    "type": "ovni",
+    "lat": 43.3795,
+    "lng": -8.4120,
+    "color": "#0ca678",
+    "description": "Sesiones de astronomía (ejemplo)",
+    "text": "Anunciante de ejemplo de tipo ovni con otro color.",
+    "link": "https://example.com",
+    "cta": "Comprar",
+    "until": "2027-12-31"
+  },
+  {
+    "id": "ejemplo-festival-verano",
+    "name": "Festival Atlántico",
+    "type": "avioneta",
+    "lat": 43.3740,
+    "lng": -8.4000,
+    "color": "#e8590c",
+    "description": "Conciertos en julio (ejemplo)",
+    "text": "Anunciante de ejemplo de tipo avioneta: da vueltas sobre la zona remolcando una pancarta de su color.",
+    "link": "https://example.com",
+    "cta": "Comprar",
+    "until": "2027-12-31"
+  },
+  {
+    "id": "ejemplo-paseos-barco",
+    "name": "Paseos en Barco Torre",
+    "type": "avioneta",
+    "lat": 43.3830,
+    "lng": -8.4060,
+    "color": "#212529",
+    "description": "Recorridos por la costa (ejemplo)",
+    "text": "Anunciante de ejemplo de tipo avioneta cerca de la Torre de Hércules.",
+    "link": "https://example.com",
+    "cta": "Reservar",
+    "until": "2027-12-31"
+  }
+]

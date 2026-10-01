@@ -24,6 +24,7 @@
     <form id="ad-form" class="ad-form" novalidate>
       <section class="ad-step">
         <h2><span class="step-num">1</span>Elige cómo quieres aparecer</h2>
+        <p id="ad-offer" class="ad-offer" hidden></p>
         <div id="ad-types" class="ad-types" role="radiogroup" aria-label="Forma de aparecer"></div>
         <p id="ad-price-note" class="field-help"></p>
       </section>
@@ -87,6 +88,7 @@
         <aside class="ad-preview">
           <h3>Así se verá</h3>
           <div class="preview-stage">
+            <canvas id="preview-3d" class="preview-3d" aria-hidden="true"></canvas>
             <div id="preview" class="marker is-found is-sponsor is-ad preview-marker">
               <span class="marker-card">
                 <span class="marker-photo"><img id="preview-img" alt="" /></span>
@@ -96,6 +98,7 @@
             </div>
           </div>
           <p id="preview-type" class="field-help"></p>
+          <p class="field-help">Prueba otros tipos y colores: la vista previa cambia al momento.</p>
         </aside>
       </section>
 
@@ -117,16 +120,30 @@
             <input id="ad-phone" name="telefono" type="tel" autocomplete="tel" />
           </div>
           <div class="field">
-            <label for="ad-nif">NIF o CIF para la factura</label>
+            <label for="ad-nif">NIF, CIF o DNI para la factura</label>
             <input id="ad-nif" name="nif" required />
           </div>
         </div>
-        <div class="field">
-          <label for="ad-months">Duración</label>
-          <select id="ad-months" name="meses">
-            <option value="1">1 mes</option><option value="3">3 meses</option><option value="6">6 meses</option><option value="12">12 meses</option>
-          </select>
+        <div class="field-row">
+          <div class="field">
+            <span class="label">Contratas como</span>
+            <div class="choice-row" role="radiogroup" aria-label="Contratas como">
+              <label><input type="radio" name="cliente" value="empresa" checked /> Empresa o autónomo</label>
+              <label><input type="radio" name="cliente" value="particular" /> Particular</label>
+            </div>
+          </div>
+          <div class="field">
+            <label for="ad-months">Duración</label>
+            <select id="ad-months" name="meses">
+              <option value="1">1 mes</option><option value="3">3 meses</option><option value="6">6 meses</option><option value="12">12 meses</option>
+            </select>
+          </div>
         </div>
+        <p id="ad-total" class="ad-total" aria-live="polite"></p>
+        <label id="ad-withdraw-row" class="check" hidden>
+          <input id="ad-withdraw" type="checkbox" />
+          <span>Pido que el anuncio se publique en cuanto se apruebe, antes de que acaben los 14 días del <a href="legal/condiciones-anunciantes.html#desistimiento" target="_blank" rel="noopener">derecho de desistimiento</a>. Sé que si desisto en ese plazo pagaré solo la parte del tiempo que el anuncio haya estado publicado, y que pierdo ese derecho cuando el servicio se haya prestado por completo.</span>
+        </label>
         <label class="check">
           <input id="ad-accept" type="checkbox" required />
           <span>He leído y acepto las <a href="legal/condiciones-anunciantes.html" target="_blank" rel="noopener">condiciones para anunciantes</a> y la <a href="legal/privacidad.html" target="_blank" rel="noopener">política de privacidad</a>. Confirmo que tengo derechos sobre las fotos y textos que envío.</span>

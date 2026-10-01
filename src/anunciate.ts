@@ -4,10 +4,12 @@ import 'leaflet/dist/leaflet.css';
 import './style.css';
 import './anunciate.css';
 import L from 'leaflet';
+import { track } from './analytics';
 import { hydrateIcons } from './icons';
+import { AdPreview3D } from './preview3d';
 
 type AdType = 'lugar' | 'globo' | 'ovni' | 'avioneta';
-interface Tarifa { nombre: string; descripcion: string; precio: string; pago?: string }
+interface Tarifa { nombre: string; descripcion: string; precioMes?: number; precio?: string; limite?: number; pago?: string }
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 hydrateIcons();
@@ -21,6 +23,7 @@ const COLORS = ['#e2602f', '#d6336c', '#7048e8', '#1c7ed6', '#0ca678', '#f08c00'
 let type: AdType = 'lugar';
 let tarifas: Record<string, Tarifa> = {};
 let note = '';
+let discounts: Record<string, number> = {};
 let photos: File[] = [];
 let point: { lat: number; lng: number } | undefined;
 
@@ -30,19 +33,26 @@ async function loadTarifas() {
     const data = await (await fetch('data/tarifas.json', { cache: 'no-cache' })).json();
     tarifas = data.tipos ?? {};
     note = data.nota ?? '';
+    discounts = data.descuentos ?? {};
+    if (data.oferta) { $('ad-offer').textContent = data.oferta; $('ad-offer').hidden = false; }
+    // Descuento por duración en el desplegable.
+    document.querySelectorAll<HTMLOptionElement>('#ad-months option').forEach((o) => {
+      if (discounts[o.value]) o.textContent += ` (−${discounts[o.value]} %)`;
+    });
   } catch { /* sin tarifas: solo nombres */ }
   const box = $('ad-types');
   box.innerHTML = '';
   for (const id of ['lugar', 'globo', 'ovni', 'avioneta'] as AdType[]) {
-    const t = tarifas[id] ?? { nombre: id, descripcion: '', precio: '' };
+    const t = tarifas[id] ?? { nombre: id, descripcion: '' };
     const b = document.createElement('button');
     b.type = 'button';
     b.setAttribute('role', 'radio');
     b.dataset.type = id;
-    b.innerHTML = '<b></b><small></small><span class="price"></span>';
+    b.innerHTML = '<b></b><small></small><span class="price"></span><span class="limit"></span>';
     b.querySelector('b')!.textContent = t.nombre;
     b.querySelector('small')!.textContent = t.descripcion;
-    b.querySelector('.price')!.textContent = t.precio;
+    b.querySelector('.price')!.textContent = priceText(t);
+    b.querySelector('.limit')!.textContent = t.limite ? `Plazas limitadas: ${t.limite} por ciudad` : '';
     b.onclick = () => { type = id; renderType(); };
     box.append(b);
   }
@@ -50,11 +60,27 @@ async function loadTarifas() {
   renderType();
 }
 
+const euros = (n: number) => n.toLocaleString('es-ES', { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 }) + ' €';
+const priceText = (t: Tarifa) => t.precio ?? (t.precioMes ? `${euros(t.precioMes)}/mes` : '');
+
+/** Total de la duración elegida con su descuento. */
+function renderTotal() {
+  const t = tarifas[type];
+  const months = Number(value('ad-months'));
+  if (!t?.precioMes) { $('ad-total').textContent = ''; return; }
+  const off = discounts[String(months)] ?? 0;
+  const total = Math.round(t.precioMes * months * (100 - off)) / 100;
+  $('ad-total').innerHTML = `Total: <b>${euros(total)}</b> + IVA por ${months} ${months === 1 ? 'mes' : 'meses'}` +
+    (off ? ` (${euros(Math.round(total / months * 100) / 100)}/mes, ${off} % de descuento)` : '');
+}
+
 function renderType() {
   document.querySelectorAll<HTMLButtonElement>('[data-type]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.type === type)));
   const t = tarifas[type];
   $('preview-type').textContent = t ? `${t.nombre}: ${t.descripcion}` : '';
   $('preview').classList.toggle('is-compact', type !== 'lugar');
+  renderTotal();
+  renderPreview();
 }
 
 // ---------- 2. Ubicación ----------
@@ -97,7 +123,9 @@ $('ad-search').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.p
 
 // ---------- 3. Anuncio y vista previa ----------
 const preview = $('preview');
+const preview3d = AdPreview3D.create($<HTMLCanvasElement>('preview-3d'), preview);
 function renderPreview() {
+  preview3d?.set(type, $<HTMLInputElement>('ad-color').value);
   const name = $<HTMLInputElement>('ad-name').value.trim();
   $('preview-name').textContent = name || 'Tu negocio';
   preview.style.setProperty('--brand', $<HTMLInputElement>('ad-color').value);
@@ -141,6 +169,12 @@ $('ad-photos').addEventListener('change', (e) => {
 const slug = (s: string) => s.normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30);
 const readAsDataUrl = (f: File) => new Promise<string>((r) => { const fr = new FileReader(); fr.onload = () => r(String(fr.result)); fr.readAsDataURL(f); });
 
+const customer = () => document.querySelector<HTMLInputElement>('input[name="cliente"]:checked')?.value ?? 'empresa';
+document.querySelectorAll('input[name="cliente"]').forEach((i) => i.addEventListener('change', () => {
+  $('ad-withdraw-row').hidden = customer() !== 'particular';
+}));
+$('ad-months').addEventListener('change', renderTotal);
+
 function value(id: string) {
   return ($(id) as HTMLInputElement).value.trim();
 }
@@ -166,7 +200,8 @@ function validate(): string {
   if (link && !/^https?:\/\/.+\..+/.test(link)) return 'El enlace debe empezar por https://';
   if (!value('ad-contact')) return 'Indica una persona de contacto.';
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value('ad-email'))) return 'Escribe un email válido.';
-  if (!value('ad-nif')) return 'Indica el NIF o CIF para la factura.';
+  if (!value('ad-nif')) return 'Indica el NIF, CIF o DNI para la factura.';
+  if (customer() === 'particular' && !$<HTMLInputElement>('ad-withdraw').checked) return 'Para publicar el anuncio dentro del plazo de desistimiento, marca la casilla correspondiente.';
   if (!$<HTMLInputElement>('ad-accept').checked) return 'Debes aceptar las condiciones y la política de privacidad.';
   return '';
 }
@@ -177,7 +212,12 @@ $('ad-form').addEventListener('submit', async (e) => {
   $('ad-error').textContent = error;
   if (error) return;
   const entry = buildEntry();
-  const contact = { contacto: value('ad-contact'), email: value('ad-email'), telefono: value('ad-phone'), nif: value('ad-nif'), meses: value('ad-months') };
+  const contact: Record<string, string> = {
+    contacto: value('ad-contact'), email: value('ad-email'), telefono: value('ad-phone'), nif: value('ad-nif'), meses: value('ad-months'),
+    cliente: customer(), total: $('ad-total').textContent ?? '',
+  };
+  // Constancia de la solicitud expresa del consumidor (art. 98.8 y 108.3 TRLGDCU).
+  if (contact.cliente === 'particular') contact.desistimiento = `Pide la ejecución inmediata y acepta pagar la parte proporcional si desiste (${new Date().toISOString()})`;
   const submit = $<HTMLButtonElement>('ad-submit');
   submit.disabled = true;
   submit.textContent = 'Enviando…';
@@ -195,6 +235,7 @@ $('ad-form').addEventListener('submit', async (e) => {
   }
   submit.disabled = false;
   submit.textContent = 'Enviar solicitud';
+  track('solicitud-anuncio', { tipo: type, envio: sent ? 'formulario' : 'email' });
   showDone(entry, contact, sent);
 });
 

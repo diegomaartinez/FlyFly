@@ -33,14 +33,30 @@ export interface Advertiser {
 const LABEL_DISTANCE = 3000; // las etiquetas se ven desde 3 km
 const RADIUS = 8000; // anunciantes a menos de 8 km del centro de la ciudad
 
+async function loadLimits(): Promise<Partial<Record<AdType, number>>> {
+  try {
+    const { tipos = {} } = await (await fetch('data/tarifas.json', { cache: 'no-cache' })).json();
+    return Object.fromEntries(Object.entries(tipos).map(([k, t]: [string, any]) => [k, Number(t.limite) || 0]));
+  } catch {
+    return {};
+  }
+}
+
 /** Anunciantes vigentes cerca de la ciudad. */
 export async function loadAdvertisers(lat: number, lng: number): Promise<Advertiser[]> {
   try {
     const res = await fetch('data/anunciantes.json', { cache: 'no-cache' });
     if (!res.ok) return [];
     const list: Advertiser[] = await res.json();
+    const limits = await loadLimits();
     const today = new Date().toISOString().slice(0, 10);
-    return list.filter((a) => (!a.until || a.until >= today) && distance(a, { lat, lng }) < RADIUS);
+    const count: Partial<Record<AdType, number>> = {};
+    // Los tipos con plazas limitadas (tarifas.json) muestran solo los primeros de la lista en cada ciudad.
+    return list.filter((a) => {
+      if ((a.until && a.until < today) || distance(a, { lat, lng }) >= RADIUS) return false;
+      count[a.type] = (count[a.type] ?? 0) + 1;
+      return !limits[a.type] || count[a.type]! <= limits[a.type]!;
+    });
   } catch {
     return [];
   }
@@ -67,6 +83,9 @@ interface Item {
 
 export class AdvertiserLayer {
   onSelect?: (poi: Poi) => void;
+  /** Se llama una vez por anunciante y visita cuando el jugador lo tiene a la vista (para las estadísticas). */
+  onSeen?: (ad: Advertiser) => void;
+  private seen = new Set<string>();
   private items: Item[] = [];
   private time = 0;
   private win = new Cartesian2();
@@ -90,6 +109,7 @@ export class AdvertiserLayer {
       if (i.model) this.viewer.scene.primitives.remove(i.model);
     }
     this.items = [];
+    this.seen.clear();
   }
 
   async add(list: Advertiser[], exclude: object[]) {
@@ -189,6 +209,7 @@ export class AdvertiserLayer {
       it.el.style.visibility = '';
       it.el.style.transform = `translate3d(${win.x.toFixed(1)}px, ${win.y.toFixed(1)}px, 0) scale(${scale.toFixed(3)})`;
       it.el.style.zIndex = String(100000 - Math.round(d));
+      if (d < 1500 && !this.seen.has(ad.id)) { this.seen.add(ad.id); this.onSeen?.(ad); }
     }
   }
 }

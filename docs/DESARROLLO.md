@@ -83,7 +83,7 @@ Formato de `public/data/anunciantes.json`:
 
 ## Página Anúnciate
 
-`anunciate.html` + `src/anunciate.ts` (segunda página del build). El anunciante elige tipo (con las tarifas de `public/data/tarifas.json`), marca la ubicación en un mapa Leaflet con teselas de OpenStreetMap, escribe textos, elige color, sube hasta 3 fotos y ve una vista previa. Al enviar:
+`anunciate.html` + `src/anunciate.ts` (segunda página del build). El anunciante elige tipo (con las tarifas de `public/data/tarifas.json`), marca la ubicación en un mapa Leaflet con teselas de OpenStreetMap, escribe textos, elige color, sube hasta 3 fotos y ve una vista previa en 3D (`src/preview3d.ts`: visor WebGL mínimo, sin Cesium, que dibuja el globo y la avioneta de `src/models.ts` y el ovni de `models/ufo.glb` con el color elegido y la misma animación que en el juego). Muestra el total según la duración y los descuentos de `tarifas.json`, y a los particulares les pide la casilla de desistimiento. Al enviar:
 
 - Con `VITE_FORM_ENDPOINT`, la solicitud (JSON + fotos) se envía por `POST multipart` a ese servicio y, si la tarifa tiene enlace de pago (`pago`), se ofrece pagar.
 - Sin él, se ofrece enviarla por email (al de `public/legal/titular.js`) y descargar el archivo de la solicitud con las fotos.
@@ -148,6 +148,8 @@ src/ads.ts      publicidad AdSense (apagada si no hay VITE_ADSENSE_CLIENT)
 src/advertisers.ts  anunciantes del modo recreativo (lugar, globo, ovni, avioneta)
 src/models.ts   modelos 3D de globo y avioneta generados con el color de cada anunciante
 src/anunciate.ts página Anúnciate (formulario, mapa, vista previa y envío)
+src/preview3d.ts vista previa 3D de los anuncios en la página Anúnciate
+src/analytics.ts estadísticas anónimas sin cookies (Umami, Plausible o Cloudflare; apagadas si no hay variable)
 scripts/importar-anuncio.mjs  publica una solicitud descargada
 public/legal/   aviso legal, privacidad, cookies y accesibilidad (datos del titular en titular.js)
 public/_headers cabeceras de seguridad para Cloudflare Pages o Netlify

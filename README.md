@@ -64,7 +64,7 @@ FlyFly es un escaparate turístico diferente: los visitantes exploran la ciudad 
 
 ## Para negocios locales
 
-Restaurantes, hoteles, tiendas, experiencias o cualquier particular pueden aparecer en el modo recreativo eligiendo su forma: **lugar con foto**, **globo aerostático**, **ovni gigante** o **avioneta con pancarta**, del color que quieran, con su propia ficha, fotos y un botón para reservar, comprar o visitar su web. Se solicita desde la página **Anúnciate**: se marca la ubicación en un mapa, se escriben los textos, se suben las fotos y se ve una vista previa. Todos los anuncios se revisan antes de publicarse y se identifican como patrocinados.
+Restaurantes, hoteles, tiendas, experiencias o cualquier particular pueden aparecer en el modo recreativo eligiendo su forma: **lugar con foto**, **globo aerostático**, **ovni gigante** o **avioneta con pancarta**, del color que quieran, con su propia ficha, fotos y un botón para reservar, comprar o visitar su web. Se solicita desde la página **Anúnciate**: se marca la ubicación en un mapa, se escriben los textos, se suben las fotos y se ve en 3D cómo quedará el anuncio antes de enviarlo. Todos los anuncios se revisan antes de publicarse y se identifican como patrocinados.
 
 ## Próximamente
 

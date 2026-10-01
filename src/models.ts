@@ -4,9 +4,9 @@
  * Convención glTF: +Y arriba, +Z adelante.
  */
 type Vec3 = [number, number, number];
-type RGB = [number, number, number];
-interface Mesh { positions: number[]; normals: number[]; indices: number[] }
-interface Part { mesh: Mesh; color: RGB; metallic?: number; roughness?: number; emissive?: RGB }
+export type RGB = [number, number, number];
+export interface Mesh { positions: number[]; normals: number[]; indices: number[] }
+export interface Part { mesh: Mesh; color: RGB; metallic?: number; roughness?: number; emissive?: RGB }
 
 export function hexToRgb(hex: string): RGB {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
@@ -47,7 +47,7 @@ function lathe(profile: [number, number][], segments: number, from = 0, to = 1):
 }
 
 /** Caja alineada con los ejes (centro y medidas). */
-function box([cx, cy, cz]: Vec3, [sx, sy, sz]: Vec3): Mesh {
+export function box([cx, cy, cz]: Vec3, [sx, sy, sz]: Vec3): Mesh {
   const mesh: Mesh = { positions: [], normals: [], indices: [] };
   const faces: [Vec3, Vec3, Vec3][] = [
     [[1, 0, 0], [0, 1, 0], [0, 0, 1]], [[-1, 0, 0], [0, 1, 0], [0, 0, -1]],
@@ -75,7 +75,7 @@ function yToZ(m: Mesh): Mesh {
   return { positions: swap(m.positions), normals: swap(m.normals), indices: m.indices.slice() };
 }
 
-function merge(meshes: Mesh[]): Mesh {
+export function merge(meshes: Mesh[]): Mesh {
   const out: Mesh = { positions: [], normals: [], indices: [] };
   for (const m of meshes) {
     const base = out.positions.length / 3;
@@ -139,22 +139,30 @@ const DARK: RGB = [0.05, 0.05, 0.06];
 
 /** Globo aerostático (~22 m de alto) con gajos del color elegido y blancos alternos. */
 export function balloonUrl(hex: string): string {
+  return toGlbUrl(balloonParts(hex));
+}
+
+/** Avioneta (~9 m) con alas y cola del color elegido y una pancarta remolcada del mismo color. */
+export function planeUrl(hex: string): string {
+  return toGlbUrl(planeParts(hex));
+}
+
+export function balloonParts(hex: string): Part[] {
   const color = hexToRgb(hex);
   const profile: [number, number][] = [[0.01, 21], [3, 20.5], [5.8, 19], [7.6, 16.5], [8.2, 13.5], [7.8, 10.5], [6.4, 8], [4.4, 6], [2.6, 4.6], [2, 4]];
   const GORES = 12;
   const colored: Mesh[] = [], white: Mesh[] = [];
   for (let g = 0; g < GORES; g++) (g % 2 ? white : colored).push(lathe(profile, 3, g / GORES, (g + 1) / GORES));
   const ropes = [[1, 1], [-1, 1], [1, -1], [-1, -1]].map(([x, z]) => box([x * 1.4, 2.2, z * 1.4], [0.08, 3.6, 0.08]));
-  return toGlbUrl([
+  return [
     { mesh: merge(colored), color },
     { mesh: merge(white), color: WHITE },
     { mesh: box([0, 0, 0], [2.4, 1.4, 2.4]), color: WOOD, roughness: 0.9 },
     { mesh: merge(ropes), color: DARK },
-  ]);
+  ];
 }
 
-/** Avioneta (~9 m) con alas y cola del color elegido y una pancarta remolcada del mismo color. */
-export function planeUrl(hex: string): string {
+export function planeParts(hex: string): Part[] {
   const color = hexToRgb(hex);
   const fuselage = yToZ(lathe([[0.01, 4.2], [0.55, 3.8], [0.75, 2.6], [0.75, 0.5], [0.55, -2], [0.25, -4.2], [0.01, -4.3]], 12));
   const wings = merge([box([0, 0.2, 1.2], [10, 0.18, 1.6]), box([0, 0.4, -3.8], [3.6, 0.12, 0.9]), box([0, 1.1, -3.9], [0.14, 1.6, 1])]);
@@ -162,11 +170,11 @@ export function planeUrl(hex: string): string {
   // Pancarta: cuerda y lona vertical detrás de la cola.
   const rope = box([0, 0, -9], [0.05, 0.05, 9]);
   const banner = box([0, -0.4, -19], [0.06, 3.2, 11]);
-  return toGlbUrl([
+  return [
     { mesh: fuselage, color: WHITE, metallic: 0.2, roughness: 0.4 },
     { mesh: wings, color },
     { mesh: prop, color: DARK },
     { mesh: rope, color: DARK },
     { mesh: banner, color, roughness: 0.8 },
-  ]);
+  ];
 }

@@ -6,6 +6,7 @@ import { geoidHeight, loadGeoid } from './geoid';
 import { hydrateIcons, icon, IconName } from './icons';
 import { adsEnabled, manageConsent, showAd } from './ads';
 import { AdvertiserLayer, loadAdvertisers } from './advertisers';
+import { track } from './analytics';
 import { bearing, distance, fetchImageCredit, fetchSummary, formatDistance, FoundVisibility, loadCityPois, loadSponsors, Poi, PoiLayer, wikiUrl } from './pois';
 import { createWorld, geocode, GeoResult, groundHeight, initialQuality, Quality, setQuality, World } from './world';
 // Sonido desactivado (para reactivarlo, descomenta las líneas marcadas con "Sonido").
@@ -249,6 +250,7 @@ async function startFlight(place: GeoResult) {
   advertise.hidden = flightMode !== 'recreativo';
   advertise.href = `anunciate.html?${new URLSearchParams({ ciudad: place.name, lat: place.lat.toFixed(5), lng: place.lng.toFixed(5) })}`;
   lastPos = undefined;
+  track('ciudad', { ciudad: place.name, modo: flightMode });
   // sound.start(); // Sonido
   $('intro').hidden = true;
   $('results').innerHTML = '';
@@ -399,6 +401,7 @@ function setTag(el: HTMLElement, kind: 'found' | 'sponsor' | 'mystery') {
 
 async function openSheet(poi: Poi, fromDiscovery = false) {
   openPoi = poi;
+  if (poi.id.startsWith('ad_')) track('anuncio-ficha', { anuncio: poi.id.slice(3) });
   sheetFromDiscovery = fromDiscovery;
   closeDrawer();
   closePopovers();
@@ -477,6 +480,11 @@ function closeSheet() {
 $('sheet-close').onclick = closeSheet;
 
 ads.onSelect = (poi) => openSheet(poi);
+// Estadísticas anónimas para los anunciantes: veces que se ha visto su anuncio, se ha abierto su ficha y se ha pulsado su botón.
+ads.onSeen = (ad) => track('anuncio-visto', { anuncio: ad.id, tipo: ad.type });
+$('sheet-cta').addEventListener('click', () => {
+  if (openPoi?.id.startsWith('ad_')) track('anuncio-clic', { anuncio: openPoi.id.slice(3) });
+});
 pois.onSelect = (poi) => {
   if (pois.isDiscovered(poi) || poi.sponsor) openSheet(poi);
   else toast({ title: 'Acércate para descubrir este lugar', iconName: 'question' });
@@ -642,6 +650,7 @@ function formatDuration(ms: number) {
 
 function showVictory() {
   if (!currentCity) return;
+  track('ciudad-completada', { ciudad: currentCity.name });
   const { total } = pois.progress();
   const stats = cityStats();
   $('victory-title').textContent = currentCity.name;
