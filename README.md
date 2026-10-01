@@ -19,7 +19,9 @@ Los lugares más interesantes de la ciudad están escondidos. Un haz de luz y un
 - 🌍 **Volar sobre cualquier ciudad del mundo en 3D**: escribe su nombre y despega.
 - 🎯 **Encontrar lugares escondidos**: monumentos, museos, playas, miradores y rincones con historia. Una brújula y haces de luz te dan pistas de hacia dónde volar.
 - 📖 **Conocer cada lugar**: al descubrirlo se abre una ficha con foto, descripción y enlace a Wikipedia.
-- 🏆 **Completar la ciudad**: el menú de lugares muestra los que has descubierto y cuántos te quedan. Tu progreso se guarda.
+- 🏆 **Completar la ciudad**: el menú de lugares muestra los que has descubierto y cuántos te quedan. Al encontrarlos todos verás tus estadísticas y podrás compartir tu logro.
+- ✨ **Viajar al instante**: teletranspórtate a cualquier lugar ya descubierto desde el menú.
+- 🛸 **Exploración automática**: con la ciudad completa, el ovni recorre solo todos sus lugares mientras disfrutas de las vistas.
 - 🛸 **Pilotar un ovni**: quédate flotando para admirar las vistas, sube, baja o deslízate en cualquier dirección. Cámara exterior o vista de dron.
 - 📱 **Jugar donde quieras**: funciona en el navegador del ordenador, la tableta o el móvil, sin instalar nada.
 
@@ -39,7 +41,9 @@ Los lugares más interesantes de la ciudad están escondidos. Un haz de luz y un
 
 Si sueltas los mandos, el ovni se queda flotando en el sitio. Vuela siempre entre 20 y 500 metros sobre la ciudad, y el indicador muestra la altitud sobre el nivel del mar.
 
-En **Ajustes** puedes elegir la calidad del mapa (Rápida, Equilibrada o Alta) según tu equipo.
+Para descubrir un lugar hay que llegar a él: a 50 metros o menos.
+
+En **Ajustes** puedes elegir la calidad del mapa (Rápida, Equilibrada o Alta) y qué lugares descubiertos se ven en el mapa (cercanos, todos o ninguno).
 
 En el menú de lugares puedes volver a abrir la ficha de cualquier sitio que ya hayas descubierto.
 

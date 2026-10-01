@@ -117,6 +117,9 @@ body:not(.flying) .hud-top, body:not(.flying) #compass, body:not(.flying) #altit
 .hud-actions { display: flex; gap: 8px; }
 .chip-city { padding: 6px 14px 6px 6px; max-width: min(340px, 52vw); }
 .chip-city .chip-trailing { color: var(--ink-3); }
+.chip-auto { color: var(--accent); font-weight: 600; }
+.chip-auto .icon { width: 20px; height: 20px; }
+.chip-auto.is-active { background: var(--accent); color: var(--accent-ink); }
 .chip-progress b { font-size: 18px; font-weight: 700; color: var(--ink); }
 .chip-progress .icon { color: var(--accent); width: 20px; height: 20px; }
 
@@ -259,10 +262,14 @@ a.row-btn { color: inherit; text-decoration: none; }
 .hint-list li { display: flex; align-items: center; gap: 8px; padding: 8px 14px 8px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 600; white-space: nowrap; }
 .hint-list .compass-arrow { width: 28px; height: 28px; background: var(--surface); }
 .place-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.place { display: block; padding: 0; border: 0; background: none; text-align: left; }
-.place img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--radius-card); background: var(--surface-2); }
-.place span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 6px; font-size: 14px; font-weight: 600; line-height: 1.25; }
-.place:hover img { filter: brightness(1.06); }
+.place { display: flex; flex-direction: column; gap: 6px; }
+.place-open { display: block; padding: 0; border: 0; background: none; text-align: left; }
+.place-open img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--radius-card); background: var(--surface-2); }
+.place-open span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 6px; font-size: 14px; font-weight: 600; line-height: 1.25; }
+.place-open:hover img { filter: brightness(1.06); }
+.place-go { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; border: 0; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 13px; font-weight: 600; }
+.place-go:hover { background: var(--accent); color: var(--accent-ink); }
+.place-go .icon { width: 16px; height: 16px; }
 .empty { color: var(--ink-3); font-size: 14px; }
 
 /* ---------- Popovers (ajustes, controles) y diálogo ---------- */
@@ -272,6 +279,7 @@ a.row-btn { color: inherit; text-decoration: none; }
 }
 @keyframes pop-in { from { opacity: 0; transform: translateY(-6px); } }
 .popover h3 { font-size: 15px; font-weight: 600; margin-bottom: 10px; }
+.popover h3.popover-section { margin-top: 18px; }
 .segmented { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px; border-radius: 999px; background: var(--surface-2); }
 .segmented button { min-height: 36px; border: 0; border-radius: 999px; background: none; font-size: 14px; font-weight: 600; color: var(--ink-2); }
 .segmented button[aria-checked='true'] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); }
@@ -291,6 +299,49 @@ kbd { display: inline-block; min-width: 26px; margin-right: 3px; padding: 2px 7p
 .modal-head h2 { font-size: 20px; font-weight: 700; }
 .credits { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; font-size: 14px; color: var(--ink-2); }
 .credits b { display: block; color: var(--ink); font-weight: 600; }
+
+/* ---------- Teletransporte ---------- */
+.warp { position: fixed; inset: 0; z-index: 45; display: grid; place-items: center; overflow: hidden; background: radial-gradient(circle, #1d6aa3 0%, #0d1b2a 75%); animation: warp-in 0.45s ease-out; }
+.warp.is-leaving { animation: warp-out 0.35s ease-in forwards; }
+@keyframes warp-in { from { opacity: 0; } }
+@keyframes warp-out { to { opacity: 0; transform: scale(1.08); } }
+.warp-rings { position: absolute; inset: 0; }
+.warp-rings::before, .warp-rings::after {
+  content: ''; position: absolute; left: 50%; top: 50%; width: 140vmax; height: 140vmax; margin: -70vmax 0 0 -70vmax; border-radius: 50%;
+  background: repeating-radial-gradient(circle, transparent 0 34px, rgba(127, 192, 234, 0.25) 36px 38px, transparent 40px 80px);
+  animation: warp-rings 1.6s linear infinite;
+}
+.warp-rings::after { animation-delay: -0.8s; opacity: 0.6; }
+@keyframes warp-rings { from { transform: scale(0.2); opacity: 1; } to { transform: scale(1.4); opacity: 0; } }
+.warp-label { position: relative; display: grid; justify-items: center; gap: 6px; color: #fff; text-align: center; padding: 0 24px; }
+.warp-label .brand-mark-lg { margin-bottom: 8px; animation: hover-float 1.2s ease-in-out infinite; }
+.warp-label small { font-size: 15px; opacity: 0.8; }
+.warp-label b { font-size: clamp(22px, 4vw, 30px); font-weight: 700; letter-spacing: -0.01em; }
+
+/* ---------- Ciudad completada ---------- */
+.screen-victory { align-items: center; justify-content: center; overflow: hidden; background: rgba(8, 22, 40, 0.55); }
+.confetti { position: absolute; inset: 0; pointer-events: none; }
+.confetti i { position: absolute; top: -20px; width: 10px; height: 16px; border-radius: 3px; animation: confetti-fall linear forwards; }
+@keyframes confetti-fall { to { transform: translateY(110vh) rotate(720deg); } }
+.victory-card {
+  position: relative; width: min(460px, 100%); padding: 30px 28px 22px; border-radius: var(--radius-panel); background: var(--surface);
+  box-shadow: var(--shadow); text-align: center; animation: victory-in 0.6s var(--ease-spring);
+}
+@keyframes victory-in { from { opacity: 0; transform: scale(0.85); } }
+.victory-badge { display: inline-grid; place-items: center; width: 64px; height: 64px; border-radius: 20px; background: var(--accent); color: #fff; }
+.victory-badge .icon { width: 36px; height: 36px; }
+.victory-kicker { margin-top: 14px; font-weight: 600; color: var(--accent); }
+.victory-card h2 { font-size: clamp(28px, 5vw, 36px); font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; }
+.victory-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 20px 0 16px; }
+.victory-stats div { padding: 12px 6px; border-radius: var(--radius-card); background: var(--surface-2); }
+.victory-stats dt { display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 13px; color: var(--ink-3); }
+.victory-stats dt .icon { width: 15px; height: 15px; }
+.victory-stats dd { margin: 4px 0 0; font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.victory-text { color: var(--ink-2); }
+.victory-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 18px; }
+.victory-actions .icon { width: 18px; height: 18px; }
+.link-btn { margin-top: 14px; padding: 8px 12px; border: 0; background: none; color: var(--ink-3); font-weight: 500; text-decoration: underline; }
+.link-btn:hover { color: var(--ink); }
 
 /* ---------- Pantallas completas (inicio y carga) ---------- */
 .screen { position: fixed; inset: 0; z-index: 50; display: flex; padding: 24px; }
@@ -373,6 +424,8 @@ li.fail .step-icon { border-color: transparent; background: var(--accent); color
 @media (max-width: 640px) {
   .chip-city .chip-stack small, .chip-city .chip-trailing { display: none; }
   .chip-progress .muted { display: none; }
+  #auto-label { display: none; }
+  .victory-stats dd { font-size: 17px; }
   .sheet { top: auto; left: 0; right: 0; bottom: 0; width: 100%; max-height: 58dvh; border-radius: var(--radius-panel) var(--radius-panel) 0 0; animation-name: sheet-up; }
   @keyframes sheet-up { from { transform: translateY(40px); opacity: 0; } }
   .sheet-media { aspect-ratio: 16 / 7; }
@@ -392,4 +445,5 @@ li.fail .step-icon { border-color: transparent; background: var(--accent); color
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
   .marker.is-mystery .marker-pin::after { display: none; }
   .area-title { animation: none; }
+  .confetti, .warp-rings { display: none; }
 }

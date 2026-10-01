@@ -26,6 +26,9 @@
       <span class="chip-trailing" data-icon="search"></span>
     </button>
     <div class="hud-actions">
+      <button id="auto-btn" class="chip chip-auto" hidden aria-pressed="false">
+        <span id="auto-icon" data-icon="path"></span><span id="auto-label">Exploración automática</span>
+      </button>
       <button id="menu-btn" class="chip chip-progress" aria-label="Ver lugares descubiertos">
         <span data-icon="target"></span><b id="visited">0</b><span class="muted">de <span id="total">0</span></span>
       </button>
@@ -63,6 +66,7 @@
       <p id="sheet-text" class="sheet-text"></p>
       <div class="sheet-actions">
         <a id="sheet-cta" class="btn btn-primary" target="_blank" rel="noopener sponsored" hidden></a>
+        <button id="sheet-travel" class="btn btn-secondary" type="button" hidden><span data-icon="travel"></span>Viajar aquí</button>
         <a id="sheet-link" class="btn btn-secondary" target="_blank" rel="noopener">Leer en Wikipedia <span data-icon="external"></span></a>
       </div>
       <p id="sheet-credit" class="credit"></p>
@@ -100,6 +104,13 @@
       <button type="button" role="radio" data-quality="alta">Alta</button>
     </div>
     <p class="help">Rápida carga antes y gasta menos batería. Alta muestra más detalle pero necesita un buen equipo.</p>
+    <h3 class="popover-section">Lugares descubiertos en el mapa</h3>
+    <div class="segmented" role="radiogroup" aria-label="Lugares descubiertos en el mapa">
+      <button type="button" role="radio" data-found="cercanos">Cercanos</button>
+      <button type="button" role="radio" data-found="todos">Todos</button>
+      <button type="button" role="radio" data-found="ninguno">Ninguno</button>
+    </div>
+    <p class="help">Cercanos muestra solo los que están a menos de 400 m, para ver mejor la ciudad.</p>
     <div class="popover-actions">
       <button id="reset-progress" class="row-btn" type="button"><span data-icon="reset"></span>Reiniciar progreso de esta ciudad</button>
       <button id="about-btn" class="row-btn" type="button"><span data-icon="info"></span>Créditos y fuentes de datos</button>
@@ -138,6 +149,37 @@
       <li><b>Iconos y tipografía</b>Phosphor Icons (MIT) y Outfit (SIL Open Font License).</li>
     </ul>
   </dialog>
+
+  <!-- Teletransporte -->
+  <div id="warp" class="warp" hidden>
+    <div class="warp-rings"></div>
+    <div class="warp-label">
+      <span class="brand-mark brand-mark-lg" data-icon="ufo"></span>
+      <small>Teletransportando a</small>
+      <b id="warp-name"></b>
+    </div>
+  </div>
+
+  <!-- Ciudad completada -->
+  <div id="victory" class="screen screen-victory" hidden>
+    <div id="confetti" class="confetti" aria-hidden="true"></div>
+    <div class="victory-card" role="dialog" aria-labelledby="victory-title">
+      <span class="victory-badge" data-icon="confetti"></span>
+      <p class="victory-kicker">¡Exploración completada!</p>
+      <h2 id="victory-title"></h2>
+      <dl class="victory-stats">
+        <div><dt><span data-icon="target"></span>Lugares</dt><dd id="v-places"></dd></div>
+        <div><dt><span data-icon="timer"></span>Tiempo</dt><dd id="v-time"></dd></div>
+        <div><dt><span data-icon="ruler"></span>Recorrido</dt><dd id="v-km"></dd></div>
+      </dl>
+      <p class="victory-text">Comunícaselo a otros alienígenas para que se unan a la exploración.</p>
+      <div class="victory-actions">
+        <button id="v-share" class="btn btn-primary" type="button"><span data-icon="share"></span>Compartir</button>
+        <button id="v-auto" class="btn btn-secondary" type="button"><span data-icon="path"></span>Exploración automática</button>
+      </div>
+      <button id="v-close" class="link-btn" type="button">Seguir volando</button>
+    </div>
+  </div>
 
   <!-- Controles táctiles -->
   <div id="touch">

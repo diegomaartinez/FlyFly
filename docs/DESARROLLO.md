@@ -57,12 +57,20 @@ Al elegir una ciudad se cargan de golpe hasta 80 lugares de Wikipedia (centro + 
 |---|---|---|
 | > 1,2 km | oculto | nada (solo la brújula) |
 | 1,2 km - 500 m | misterio | marcador "?" + haz de luz naranja |
-| 500 - 250 m | cerca | tarjeta con la foto desenfocada y la distancia |
-| < 250 m | descubierto | tarjeta con foto, nombre y descripción (píldora compacta a más de 700 m) |
+| 500 - 50 m | cerca | tarjeta con la foto desenfocada y la distancia |
+| < 50 m | descubierto | tarjeta con foto, nombre y descripción (píldora compacta a más de 700 m) |
 
 Los marcadores son elementos HTML (`#markers`) que se recolocan en cada fotograma con `SceneTransforms.worldToWindowCoordinates`; su altura se mide con `sampleHeightMostDetailed` (35 m sobre el suelo o el tejado). Los haces de luz son polilíneas de Cesium y se excluyen al medir alturas.
 
-El progreso se guarda en el navegador (`localStorage`) y se puede reiniciar desde Ajustes.
+Los descubiertos se muestran según Ajustes: cercanos (menos de 400 m, por defecto), todos o ninguno (`PoiLayer.foundVisibility`).
+
+El progreso se guarda en el navegador (`localStorage`) y se puede reiniciar desde Ajustes. Por ciudad se guardan también la fecha del primer descubrimiento, la de finalización y los km recorridos (`flyfly:cities`), que se muestran en la pantalla de ciudad completada.
+
+## Viajes, ciudad completada y piloto automático (`src/main.ts`)
+
+- **Viajar** (menú de lugares o ficha): animación de teletransporte de 2 a 4 s mientras se mide el terreno y cargan las teselas; el ovni aparece 150 m al sur del lugar.
+- **Ciudad completada**: pantalla con confeti, lugares, tiempo desde el primer descubrimiento y km recorridos, botón de compartir (Web Share API o copiar enlace) y acceso a la exploración automática.
+- **Exploración automática**: disponible siempre que la ciudad esté completa (botón en la barra superior). Empieza en un lugar al azar y vuela en línea recta al más cercano no visitado, a 110 m sobre el suelo, con una pausa de 2,5 s en cada uno. Cualquier mando manual la detiene.
 
 Los lugares patrocinados se representan con el campo `sponsor` de `Poi`: se ven desde 3 km, con borde ámbar, la etiqueta "Patrocinado" y un botón de acción (`rel="sponsored"`). Falta conectar la fuente de datos de patrocinadores (JSON o backend).
 

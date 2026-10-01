@@ -96,13 +96,16 @@ export async function fetchImageCredit(imageUrl: string): Promise<ImageCredit | 
 
 const REVEAL_DISTANCE = 1200; // aparece el marcador "?"
 const NEAR_DISTANCE = 500; // se convierte en tarjeta con la foto desenfocada
-const DISCOVER_DISTANCE = 250; // se descubre
-const FOUND_VISIBLE = 2500; // los descubiertos se ven hasta esta distancia
+const DISCOVER_DISTANCE = 50; // se descubre (hay que llegar al sitio)
 const SPONSOR_VISIBLE = 3000; // los patrocinados se ven desde más lejos
 const COMPACT_DISTANCE = 700; // más allá, la tarjeta se reduce a una píldora
 const MARKER_HEIGHT = 35; // metros sobre el suelo o el tejado
 const BEAM_HEIGHT = 220; // haz de luz de los lugares sin descubrir
 const STORAGE_KEY = 'flyfly:discovered';
+
+/** Qué lugares ya descubiertos se muestran en el mapa (Ajustes). */
+export type FoundVisibility = 'todos' | 'cercanos' | 'ninguno';
+const FOUND_VISIBLE: Record<FoundVisibility, number> = { todos: Infinity, cercanos: 400, ninguno: -1 };
 
 type State = 'hidden' | 'mystery' | 'near' | 'found';
 
@@ -136,6 +139,8 @@ export class PoiLayer {
   readonly excluded: Entity[] = [];
   /** Clic en un marcador. */
   onSelect?: (poi: Poi) => void;
+  /** Visibilidad de los lugares descubiertos. */
+  foundVisibility: FoundVisibility = 'cercanos';
   private markers = new Map<string, Marker>();
   private fallbackGround = 0;
   private sampling = 0;
@@ -205,7 +210,7 @@ export class PoiLayer {
       if (!discovered && !poi.sponsor && (!target || m.dist < target.dist)) target = { poi, dist: m.dist };
 
       let state: State = 'hidden';
-      if (discovered) state = m.dist < FOUND_VISIBLE ? 'found' : 'hidden';
+      if (discovered) state = m.dist < FOUND_VISIBLE[this.foundVisibility] ? 'found' : 'hidden';
       else if (poi.sponsor) state = m.dist < SPONSOR_VISIBLE ? 'found' : 'hidden';
       else if (m.dist < NEAR_DISTANCE) state = 'near';
       else if (m.dist < REVEAL_DISTANCE) state = 'mystery';
