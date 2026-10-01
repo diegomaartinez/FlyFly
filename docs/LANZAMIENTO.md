@@ -70,7 +70,7 @@ Calcula el coste con el tráfico esperado antes de lanzar campañas.
 6. Amplía la política de seguridad: en `public/_headers` sustituye la línea `Content-Security-Policy` por esta y revisa la consola del navegador tras publicar (Google cambia dominios a veces):
 
 ```
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://*.googlesyndication.com https://*.google.com https://*.gstatic.com https://*.doubleclick.net https://*.googletagservices.com https://*.adtrafficquality.google https://fundingchoicesmessages.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' data: blob: https://*.googleapis.com https://*.cesium.com https://*.wikipedia.org https://*.wikimedia.org https://nominatim.openstreetmap.org https://www.ign.es https://tiles.maps.eox.at https://*.google.com https://*.googlesyndication.com https://*.doubleclick.net https://*.adtrafficquality.google; frame-src https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com https://fundingchoicesmessages.google.com; worker-src 'self' blob:; child-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://*.googlesyndication.com https://*.google.com https://*.gstatic.com https://*.doubleclick.net https://*.googletagservices.com https://*.adtrafficquality.google https://fundingchoicesmessages.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' data: blob: https://*.googleapis.com https://*.cesium.com https://*.wikipedia.org https://*.wikimedia.org https://nominatim.openstreetmap.org https://www.ign.es https://tiles.maps.eox.at https://formspree.io https://api.web3forms.com https://*.google.com https://*.googlesyndication.com https://*.doubleclick.net https://*.adtrafficquality.google; frame-src https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com https://fundingchoicesmessages.google.com; worker-src 'self' blob:; child-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests
 ```
 
 ## 6. Patrocinios de negocios locales
@@ -104,19 +104,33 @@ Antes de cobrar:
 - **Contrato o condiciones de patrocinio**: duración, precio, qué incluye (posición, visibilidad, enlace), forma de pago, renovación y baja, y que el negocio garantiza los derechos de las fotos y textos que entrega.
 - **Cobro**: transferencia o una pasarela como Stripe (nunca manejes tú datos de tarjetas).
 
-## 7. Versión para ayuntamientos
+## 7. Vender anuncios en el modo recreativo
+
+Flujo sin servidor propio: el anunciante envía su solicitud, tú la revisas y la publicas.
+
+1. **Tarifas**: edita `public/data/tarifas.json` (nombre, descripción y precio de cada forma de aparecer: lugar, globo, ovni, avioneta).
+2. **Cobro**: crea en Stripe un *Payment Link* para cada tarifa y pon su URL en el campo `pago`. La página lo ofrece tras enviar la solicitud, con el email y la referencia del anuncio ya rellenos. Avisa de que el anuncio no se publica hasta revisarlo y que si se rechaza se devuelve el dinero (ya está en las condiciones).
+3. **Recepción de solicitudes**: crea un formulario en un servicio que admita archivos adjuntos (Formspree, Web3Forms u otro; comprueba que tu plan permite adjuntos) y pon su URL en la variable `VITE_FORM_ENDPOINT`. Si usas otro servicio, añade su dominio a `connect-src` en `public/_headers`. Sin servicio, la página ofrece enviar la solicitud por email (el de `titular.js`) y descargar un archivo con las fotos.
+4. **Revisión**: comprueba que el contenido cumple las condiciones para anunciantes, que la ubicación es correcta y que el pago está hecho.
+5. **Publicación**: si te llegó el archivo descargado, ejecuta `node scripts/importar-anuncio.mjs solicitud-flyfly-xxx.json`. Si llegó por el servicio de formularios, guarda las fotos en `public/anunciantes/` con los nombres indicados y pega el bloque `anuncio` en `public/data/anunciantes.json`. Haz commit y push.
+6. **Caducidad**: el campo `until` retira el anuncio automáticamente al terminar el periodo. Para renovar, cambia la fecha.
+7. **Factura** a cada anunciante con IVA.
+
+Textos legales relacionados: `public/legal/condiciones-anunciantes.html` (rellena plazos y devoluciones) y la sección «Si te anuncias en FlyFly» de la política de privacidad (indica el servicio de formularios y la pasarela de pago que uses).
+
+## 8. Versión para ayuntamientos
 
 - **Accesibilidad obligatoria** (Real Decreto 1112/2018): WCAG 2.1 nivel AA y la declaración de `public/legal/accesibilidad.html`, que debe completar el ayuntamiento.
 - **Esquema Nacional de Seguridad** (Real Decreto 311/2022): las administraciones suelen exigirlo a sus proveedores; pregunta qué categoría piden.
 - **Factura electrónica** a través de FACe.
 - **Contrato** con el ayuntamiento (contrato menor o licitación) y, si tratas datos por su cuenta, un contrato de encargado del tratamiento.
 
-## 8. Marca
+## 9. Marca
 
 - Busca «FlyFly» en la OEPM (España) y la EUIPO (UE) y valora registrarla en las clases 9, 41 y 42.
 - No uses nombres, logotipos ni recursos de Nintendo o Wii en la web ni en la promoción.
 
-## 9. Seguridad
+## 10. Seguridad
 
 - Activa la verificación en dos pasos en GitHub, Cloudflare, Google Cloud, Cesium y AdSense.
 - Nunca subas el archivo `.env` (ya está en `.gitignore`). Los tokens van como secretos en GitHub o Cloudflare.
@@ -124,7 +138,7 @@ Antes de cobrar:
 - Acepta las PR de Dependabot tras comprobar que la web compila.
 - Revisa la consola del navegador tras cada cambio de la política de seguridad.
 
-## 10. Lista final antes de lanzar
+## 11. Lista final antes de lanzar
 
 - [ ] Dominio propio con HTTPS en Cloudflare Pages (o Netlify)
 - [ ] Licencia comercial de mapas (Cesium o Google) con alertas de presupuesto
@@ -134,5 +148,7 @@ Antes de cobrar:
 - [ ] Alta fiscal hecha si vas a cobrar publicidad o patrocinios
 - [ ] AdSense aprobado, mensaje RGPD activo y CSP ampliada (si hay anuncios)
 - [ ] Contrato de patrocinio preparado (si hay patrocinadores)
+- [ ] Tarifas, enlaces de pago y servicio de formularios configurados (si vendes anuncios)
+- [ ] Condiciones para anunciantes completadas y revisadas
 - [ ] Marca comprobada en OEPM y EUIPO
 - [ ] Probado en móvil y ordenador con el dominio definitivo

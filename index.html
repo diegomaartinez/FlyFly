@@ -20,12 +20,18 @@
 
   <!-- Barra superior -->
   <header class="hud-top">
+    <div class="hud-left">
+    <button id="home-btn" class="icon-btn" aria-label="Menú principal" title="Menú principal"><span data-icon="home"></span></button>
     <button id="city-btn" class="chip chip-city" aria-label="Cambiar de ciudad">
       <span class="brand-mark" data-icon="ufo"></span>
       <span class="chip-stack"><small>Sobrevolando</small><b id="city-name">-</b></span>
       <span class="chip-trailing" data-icon="search"></span>
     </button>
+    </div>
     <div class="hud-actions">
+      <a id="advertise-btn" class="chip chip-auto" href="anunciate.html" target="_blank" rel="noopener" hidden>
+        <span data-icon="megaphone"></span><span class="chip-text">Anúnciate aquí</span>
+      </a>
       <button id="auto-btn" class="chip chip-auto" hidden aria-pressed="false">
         <span id="auto-icon" data-icon="path"></span><span id="auto-label">Exploración automática</span>
       </button>
@@ -64,6 +70,7 @@
       <h2 id="sheet-title"></h2>
       <p id="sheet-desc" class="sheet-desc"></p>
       <p id="sheet-text" class="sheet-text"></p>
+      <div id="sheet-gallery" class="sheet-gallery" hidden></div>
       <div class="sheet-actions">
         <a id="sheet-cta" class="btn btn-primary" target="_blank" rel="noopener sponsored" hidden></a>
         <button id="sheet-travel" class="btn btn-secondary" type="button" hidden><span data-icon="travel"></span>Viajar aquí</button>
@@ -77,7 +84,7 @@
   <!-- Lugares de la ciudad -->
   <aside id="drawer" class="drawer" aria-labelledby="drawer-title" hidden>
     <div class="drawer-head">
-      <h2 id="drawer-title">Lugares de <span id="drawer-city"></span></h2>
+      <h2 id="drawer-title"><span id="drawer-kind">Lugares</span> de <span id="drawer-city"></span></h2>
       <button id="drawer-close" class="icon-btn" aria-label="Cerrar"><span data-icon="close"></span></button>
     </div>
     <div class="drawer-progress">
@@ -89,7 +96,7 @@
       <ul id="drawer-hints" class="hint-list"></ul>
     </section>
     <section>
-      <h3>Descubiertos</h3>
+      <h3 id="drawer-grid-title">Descubiertos</h3>
       <div id="drawer-grid" class="place-grid"></div>
       <p id="drawer-empty" class="empty">Todavía no has descubierto ningún lugar. Sigue la flecha y los haces de luz naranjas.</p>
     </section>
@@ -212,6 +219,14 @@
       <div class="brand"><span class="brand-mark" data-icon="ufo"></span>FlyFly</div>
       <h1>Sobrevuela cualquier ciudad del mundo</h1>
       <p class="lead">Pilota un ovni sobre ciudades reales en 3D y encuentra los lugares escondidos.</p>
+      <div class="mode-picker" role="radiogroup" aria-label="Modo de juego">
+        <button type="button" role="radio" data-mode="turismo">
+          <span data-icon="compass"></span><b>Turismo</b><small>Descubre monumentos y rincones con historia</small>
+        </button>
+        <button type="button" role="radio" data-mode="recreativo">
+          <span data-icon="storefront"></span><b>Recreativo</b><small>Negocios y anunciantes de la ciudad</small>
+        </button>
+      </div>
       <form id="search" class="search" autocomplete="off">
         <label for="search-input">¿A dónde vamos?</label>
         <div class="search-row">
@@ -226,6 +241,7 @@
         <h3>Recientes</h3>
         <div id="recent-list" class="recent-list"></div>
       </div>
+      <p id="advertise-note" class="note-cta" hidden>¿Tienes un negocio o quieres salir en el mapa? <a href="anunciate.html" target="_blank" rel="noopener">Anúnciate en FlyFly</a></p>
       <p id="mode-note" class="note"></p>
       <nav class="legal-links" aria-label="Información legal">
         <a href="legal/aviso-legal.html" target="_blank" rel="noopener">Aviso legal</a>

@@ -59,5 +59,10 @@ export default defineConfig(({ mode }) => ({
     }),
     sitePlugin(mode),
   ],
-  build: { target: 'es2022', chunkSizeWarningLimit: 6000 },
+  build: {
+    target: 'es2022',
+    chunkSizeWarningLimit: 6000,
+    // Dos páginas: el juego y "Anúnciate".
+    rollupOptions: { input: { main: 'index.html', anunciate: 'anunciate.html' } },
+  },
 }));

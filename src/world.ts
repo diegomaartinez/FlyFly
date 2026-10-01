@@ -119,12 +119,17 @@ export async function createWorld(container: HTMLElement): Promise<World> {
   }
 }
 
+/** Altura válida (m): descarta lecturas sin datos, que pueden dar valores absurdos como -28.000 m. */
+export function validHeight(h: number | undefined, fallback = 0): number {
+  return h !== undefined && Number.isFinite(h) && h > -500 && h < 9000 ? h : fallback;
+}
+
 /** Altura del suelo (terreno + edificios) en un punto, esperando a que carguen las teselas. */
 export async function groundHeight(world: World, lat: number, lng: number): Promise<number> {
   if (!world.tileset) return 0;
   try {
     const [c] = await world.viewer.scene.sampleHeightMostDetailed([Cartographic.fromDegrees(lng, lat)]);
-    return c?.height ?? 0;
+    return validHeight(c?.height);
   } catch {
     return 0;
   }

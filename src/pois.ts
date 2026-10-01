@@ -3,11 +3,14 @@ import {
   SceneTransforms, CesiumWidget,
 } from '@cesium/engine';
 import { icon } from './icons';
+import { validHeight } from './world';
 
 export interface Sponsor {
   tier: 'gold' | 'silver';
   cta?: string;
   link?: string;
+  /** Color del recuadro elegido por el anunciante. */
+  color?: string;
 }
 
 export interface Poi {
@@ -24,6 +27,10 @@ export interface Poi {
   /** Título del artículo de Wikipedia para cargar el resumen completo. */
   wikiTitle?: string;
   sponsor?: Sponsor;
+  /** Texto propio de la ficha (anunciantes). */
+  body?: string;
+  /** Fotos adicionales de la ficha. */
+  gallery?: string[];
 }
 
 const LANG: string = import.meta.env.VITE_WIKI_LANG || 'es';
@@ -305,7 +312,7 @@ export class PoiLayer {
         [Cartographic.fromDegrees(m.poi.lng, m.poi.lat)],
         [...exclude, ...this.excluded],
       );
-      m.ground = c?.height ?? this.fallbackGround;
+      m.ground = validHeight(c?.height, this.fallbackGround);
     } catch {
       m.ground = this.fallbackGround;
     } finally {

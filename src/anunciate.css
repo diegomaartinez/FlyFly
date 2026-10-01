@@ -1,0 +1,53 @@
+/* Página "Anúnciate": reutiliza los tokens y componentes de style.css. */
+body.ad-page { height: auto; overflow: auto; background: var(--surface-2); }
+html:has(body.ad-page) { height: auto; overflow: auto; }
+.ad-header { max-width: 1040px; margin: 0 auto; padding: 18px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ad-header .brand { color: var(--ink); text-decoration: none; }
+.ad-main { max-width: 1040px; margin: 0 auto; padding: 0 20px 40px; }
+.ad-hero { padding: 24px 0 8px; }
+.ad-hero h1 { font-size: clamp(32px, 5vw, 48px); line-height: 1.05; letter-spacing: -0.025em; }
+.ad-form { display: grid; gap: 16px; margin-top: 20px; }
+.ad-step { padding: 24px; border-radius: var(--radius-panel); background: var(--surface); }
+.ad-step h2 { display: flex; align-items: center; gap: 10px; font-size: 20px; margin-bottom: 16px; }
+.step-num { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 15px; }
+.ad-types { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+.ad-types button { display: grid; gap: 4px; padding: 16px; border: 2px solid transparent; border-radius: var(--radius-card); background: var(--surface-2); text-align: left; }
+.ad-types button[aria-checked='true'] { border-color: var(--accent); background: var(--accent-soft); }
+.ad-types b { font-size: 16px; font-weight: 600; }
+.ad-types small { color: var(--ink-2); font-size: 13.5px; }
+.ad-types .price { margin-top: 6px; font-weight: 700; color: var(--accent); }
+.field { display: grid; gap: 6px; margin-bottom: 14px; }
+.field label, .field .label { font-size: 14px; font-weight: 600; }
+.field input, .field select, .field textarea, .ad-step .search-row input {
+  width: 100%; min-height: 46px; padding: 10px 14px; border: 2px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); font: 500 15px var(--font);
+}
+.field textarea { resize: vertical; }
+.field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--accent); }
+.field input[type='color'] { width: 56px; padding: 4px; }
+.field input[type='file'] { padding: 10px; }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.ad-step .search-row { display: flex; gap: 8px; }
+.ad-map { height: 360px; border-radius: var(--radius-card); overflow: hidden; z-index: 0; }
+.map-pin span { display: block; width: 28px; height: 28px; border-radius: 50% 50% 50% 0; background: var(--accent); border: 3px solid #fff; transform: rotate(-45deg); box-shadow: var(--shadow-sm); }
+.color-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.swatches { display: flex; gap: 8px; }
+.swatches button { width: 32px; height: 32px; border-radius: 50%; border: 3px solid var(--surface); box-shadow: 0 0 0 1px var(--line); }
+.photo-list { display: flex; gap: 8px; }
+.photo-list img { width: 84px; height: 64px; object-fit: cover; border-radius: 10px; }
+.ad-columns { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 24px; }
+.ad-preview h3 { font-size: 15px; margin-bottom: 10px; }
+.preview-stage { position: relative; height: 260px; border-radius: var(--radius-card); background: linear-gradient(180deg, #8fc9f0, #3f7fb3); }
+.preview-marker { left: 50% !important; top: 85% !important; pointer-events: none; }
+.check { display: flex; gap: 10px; align-items: flex-start; margin: 6px 0 12px; font-size: 14px; color: var(--ink-2); }
+.check input { width: 20px; height: 20px; margin-top: 2px; flex: none; }
+.check a { color: var(--accent); }
+.btn-lg { min-height: 52px; padding: 0 28px; font-size: 16px; }
+.ad-done { margin-top: 20px; text-align: center; }
+.ad-done h2 { justify-content: center; margin: 14px 0 8px; }
+.ad-done p { color: var(--ink-2); max-width: 60ch; margin: 0 auto; }
+.ad-footer { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; padding: 20px; font-size: 13px; }
+.ad-footer a { color: var(--ink-3); }
+@media (max-width: 760px) {
+  .ad-columns, .field-row { grid-template-columns: 1fr; }
+  .ad-map { height: 300px; }
+}

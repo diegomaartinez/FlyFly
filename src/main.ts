@@ -1,14 +1,16 @@
 import '@cesium/engine/Source/Widget/CesiumWidget.css';
 import '@fontsource-variable/outfit';
 import './style.css';
-import { Controls, Craft } from './flight';
+import { CITY_ALTITUDE, Controls, Craft } from './flight';
 import { geoidHeight, loadGeoid } from './geoid';
 import { hydrateIcons, icon, IconName } from './icons';
 import { adsEnabled, manageConsent, showAd } from './ads';
+import { AdvertiserLayer, loadAdvertisers } from './advertisers';
 import { bearing, distance, fetchImageCredit, fetchSummary, formatDistance, FoundVisibility, loadCityPois, loadSponsors, Poi, PoiLayer, wikiUrl } from './pois';
 import { createWorld, geocode, GeoResult, groundHeight, initialQuality, Quality, setQuality, World } from './world';
 // Sonido desactivado (para reactivarlo, descomenta las líneas marcadas con "Sonido").
 // import { EngineSound } from './sound'; // Sonido
+import { Matrix4 } from '@cesium/engine';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 hydrateIcons();
@@ -17,6 +19,7 @@ const [world] = await Promise.all([createWorld($('world')), loadGeoid()]);
 const { viewer } = world;
 const ufo = new Craft(viewer);
 const pois = new PoiLayer(viewer, $('markers'));
+const ads = new AdvertiserLayer(viewer, $('markers'));
 // const sound = new EngineSound(); // Sonido
 await ufo.load('models/ufo.glb');
 let quality: Quality = initialQuality();
@@ -31,6 +34,15 @@ $('mode-note').textContent = world.error
 let flying = false;
 let paused = true;
 let currentCity: GeoResult | undefined;
+
+// Modo de juego: turismo (lugares de Wikipedia por descubrir) o recreativo (negocios y anunciantes).
+type Mode = 'turismo' | 'recreativo';
+const MODE_KEY = 'flyfly:mode';
+let mode: Mode = (() => {
+  try { return localStorage.getItem(MODE_KEY) === 'recreativo' ? 'recreativo' : 'turismo'; } catch { return 'turismo'; }
+})();
+/** Modo de la ciudad que se está sobrevolando (el del menú cuando se eligió la ciudad). */
+let flightMode: Mode = mode;
 let lastPos: { lat: number; lng: number } | undefined;
 
 // Estadísticas por ciudad (en el navegador): primer descubrimiento, finalización y distancia recorrida.
@@ -135,6 +147,19 @@ function renderRecent() {
   }
 }
 
+function renderMode() {
+  document.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.mode === mode)));
+  $('advertise-note').hidden = mode !== 'recreativo';
+}
+document.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach((b) => {
+  b.onclick = () => {
+    mode = b.dataset.mode as Mode;
+    try { localStorage.setItem(MODE_KEY, mode); } catch { /* sin almacenamiento */ }
+    renderMode();
+  };
+});
+renderMode();
+
 searchInput.disabled = searchBtn.disabled = false;
 setStatus('');
 renderRecent();
@@ -152,6 +177,29 @@ function openSearch() {
   searchInput.focus();
 }
 $('city-btn').onclick = openSearch;
+
+/** Vuelve al menú principal: deja la ciudad y muestra el planeta con el buscador. */
+function goHome() {
+  stopAutopilot();
+  closePanels();
+  $('victory').hidden = true;
+  flying = false;
+  paused = true;
+  document.body.classList.remove('flying', 'mode-recreativo');
+  pois.clear();
+  ads.clear();
+  ufo.hide();
+  viewer.camera.lookAtTransform(Matrix4.IDENTITY);
+  viewer.camera.flyHome(2);
+  searchInput.value = '';
+  $('results').innerHTML = '';
+  setStatus('');
+  renderRecent();
+  renderMode();
+  $('intro-close').hidden = true;
+  $('intro').hidden = false;
+}
+$('home-btn').onclick = goHome;
 $('intro-close').onclick = () => {
   $('intro').hidden = true;
   paused = false;
@@ -195,6 +243,11 @@ async function startFlight(place: GeoResult) {
   stopAutopilot();
   saveRecent(place);
   currentCity = place;
+  flightMode = mode;
+  document.body.classList.toggle('mode-recreativo', flightMode === 'recreativo');
+  const advertise = $<HTMLAnchorElement>('advertise-btn');
+  advertise.hidden = flightMode !== 'recreativo';
+  advertise.href = `anunciate.html?${new URLSearchParams({ ciudad: place.name, lat: place.lat.toFixed(5), lng: place.lng.toFixed(5) })}`;
   lastPos = undefined;
   // sound.start(); // Sonido
   $('intro').hidden = true;
@@ -204,8 +257,13 @@ async function startFlight(place: GeoResult) {
   flying = true;
   paused = false;
   document.body.classList.add('flying');
-  const { total } = pois.progress();
-  showAreaTitle(place.name, total ? `${total} lugares escondidos por descubrir` : 'No hay lugares registrados en esta zona');
+  if (flightMode === 'recreativo') {
+    const n = ads.pois.length;
+    showAreaTitle(place.name, n ? `${n} ${n === 1 ? 'negocio' : 'negocios y anunciantes'} en el mapa` : 'Todavía no hay anunciantes aquí. ¡Sé el primero!');
+  } else {
+    const { total } = pois.progress();
+    showAreaTitle(place.name, total ? `${total} lugares escondidos por descubrir` : 'No hay lugares registrados en esta zona');
+  }
   showHelpOnce();
 }
 
@@ -244,6 +302,9 @@ async function flyTo(place: GeoResult) {
   paused = true;
   closePanels();
   pois.clear();
+  ads.clear();
+  const placesStep = document.querySelector('#loading-steps [data-step="places"]')!;
+  placesStep.lastChild!.textContent = flightMode === 'recreativo' ? 'Buscando negocios y anunciantes' : 'Buscando lugares de interés';
   $('city-name').textContent = $('drawer-city').textContent = $('loading-city').textContent = place.name;
   document.querySelectorAll<HTMLElement>('#loading-steps li').forEach((li) => {
     li.className = '';
@@ -254,14 +315,17 @@ async function flyTo(place: GeoResult) {
   $('loading').hidden = false;
 
   // Los lugares se piden a la vez que se coloca la cámara y se mide el terreno.
-  const places = loadCityPois(place.lat, place.lng);
-  const sponsors = loadSponsors(place.lat, place.lng);
+  const tourism = flightMode === 'turismo';
+  const places = tourism ? loadCityPois(place.lat, place.lng) : Promise.resolve([]);
+  const sponsors = tourism ? loadSponsors(place.lat, place.lng) : Promise.resolve([]);
+  const advertisers = tourism ? Promise.resolve([]) : loadAdvertisers(place.lat, place.lng);
+  places.catch(() => {}); // se gestiona más abajo
 
   step('city', 'active');
-  ufo.teleport(place.lat, place.lng);
+  ufo.teleport(place.lat, place.lng, 0, CITY_ALTITUDE);
   ufo.render(0);
   const ground = await Promise.race([groundHeight(world, place.lat, place.lng), timeout(8000, 0)]);
-  ufo.teleport(place.lat, place.lng, ground);
+  ufo.teleport(place.lat, place.lng, ground, CITY_ALTITUDE);
   ufo.render(0);
   step('city', 'done');
   setProgress(0.15);
@@ -276,6 +340,7 @@ async function flyTo(place: GeoResult) {
   try {
     pois.add(await sponsors);
   } catch { /* sin patrocinadores */ }
+  if (!tourism) await ads.add(await advertisers, ufo.excluded);
   setProgress(0.35);
 
   step('tiles', 'active');
@@ -348,7 +413,18 @@ async function openSheet(poi: Poi, fromDiscovery = false) {
   const desc = poi.description ? poi.description[0].toUpperCase() + poi.description.slice(1) : '';
   $('sheet-desc').textContent = desc;
   $('sheet-desc').hidden = !desc;
-  $('sheet-text').textContent = '';
+  $('sheet-text').textContent = poi.body ?? '';
+  const gallery = $('sheet-gallery');
+  gallery.innerHTML = '';
+  gallery.hidden = (poi.gallery?.length ?? 0) < 2;
+  for (const src of poi.gallery ?? []) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.innerHTML = '<img alt="" loading="lazy" />';
+    b.querySelector('img')!.src = src;
+    b.onclick = () => { img.src = src; };
+    gallery.append(b);
+  }
   const link = $<HTMLAnchorElement>('sheet-link');
   link.hidden = !poi.wikiTitle && !poi.url;
   link.href = poi.url ?? (poi.wikiTitle ? wikiUrl(poi.wikiTitle) : '#');
@@ -359,7 +435,7 @@ async function openSheet(poi: Poi, fromDiscovery = false) {
     cta.textContent = poi.sponsor.cta ?? 'Visitar web';
   }
   const travelBtn = $('sheet-travel');
-  travelBtn.hidden = !pois.isDiscovered(poi) || distance(ufo, poi) < 300;
+  travelBtn.hidden = !(pois.isDiscovered(poi) || poi.id.startsWith('ad_')) || distance(ufo, poi) < 300;
   travelBtn.onclick = () => travelTo(poi);
   const credit = $('sheet-credit');
   credit.textContent = '';
@@ -372,7 +448,7 @@ async function openSheet(poi: Poi, fromDiscovery = false) {
     poi.image ? fetchImageCredit(poi.image).catch(() => undefined) : undefined,
   ]);
   if (openPoi !== poi) return;
-  $('sheet-text').textContent = summary?.extract ?? '';
+  $('sheet-text').textContent = summary?.extract ?? poi.body ?? '';
   if (summary?.url) link.href = summary.url;
   if (!poi.image && summary?.image) {
     img.src = summary.image;
@@ -391,6 +467,7 @@ async function openSheet(poi: Poi, fromDiscovery = false) {
     credit.append(a, photo.license ? ` (${photo.license}). ` : '. ');
   }
   if (poi.wikiTitle) credit.append('Texto: Wikipedia (CC BY-SA 4.0).');
+  if (poi.id.startsWith('ad_')) credit.append(`Contenido publicitario proporcionado por ${poi.name}.`);
 }
 
 function closeSheet() {
@@ -399,6 +476,7 @@ function closeSheet() {
 }
 $('sheet-close').onclick = closeSheet;
 
+ads.onSelect = (poi) => openSheet(poi);
 pois.onSelect = (poi) => {
   if (pois.isDiscovered(poi) || poi.sponsor) openSheet(poi);
   else toast({ title: 'Acércate para descubrir este lugar', iconName: 'question' });
@@ -425,23 +503,27 @@ function renderDrawer() {
   }
 
   // La cuadrícula solo se rehace cuando cambia el número de descubiertos (evita recargar fotos).
-  const found = [...pois.pois.values()].filter((p) => pois.isDiscovered(p) && !p.sponsor);
+  const recreational = flightMode === 'recreativo';
+  $('drawer-kind').textContent = recreational ? 'Negocios' : 'Lugares';
+  $('drawer-grid-title').textContent = recreational ? 'En el mapa' : 'Descubiertos';
+  $('drawer-empty').textContent = recreational
+    ? 'Todavía no hay anunciantes en esta ciudad.'
+    : 'Todavía no has descubierto ningún lugar. Sigue la flecha y los haces de luz naranjas.';
+  const found = recreational ? ads.pois : [...pois.pois.values()].filter((p) => pois.isDiscovered(p) && !p.sponsor);
   $('drawer-empty').hidden = found.length > 0;
   if (found.length === gridCount) return;
   gridCount = found.length;
   const grid = $('drawer-grid');
   grid.innerHTML = '';
   for (const poi of found) {
-    const tile = document.createElement('div');
+    // Al pulsar se abre la ficha, que tiene el botón "Viajar aquí".
+    const tile = document.createElement('button');
+    tile.type = 'button';
     tile.className = 'place';
-    tile.innerHTML = `<button type="button" class="place-open"><img alt="" loading="lazy" /><span></span></button>
-      <button type="button" class="place-go">${icon('travel')}Viajar</button>`;
+    tile.innerHTML = '<img alt="" loading="lazy" /><span></span>';
     if (poi.thumb) tile.querySelector('img')!.src = poi.thumb;
     tile.querySelector('span')!.textContent = poi.name;
-    tile.querySelector<HTMLButtonElement>('.place-open')!.onclick = () => openSheet(poi);
-    const go = tile.querySelector<HTMLButtonElement>('.place-go')!;
-    go.setAttribute('aria-label', `Viajar a ${poi.name}`);
-    go.onclick = () => travelTo(poi);
+    tile.onclick = () => openSheet(poi);
     grid.append(tile);
   }
 }
@@ -844,13 +926,19 @@ viewer.scene.preUpdate.addEventListener(() => {
   slowTimer += dt;
   if (slowTimer > 0.25) {
     slowTimer = 0;
-    ufo.sampleGround(pois.excluded);
+    ufo.sampleGround([...pois.excluded, ...ads.excluded]);
     trackDistance(0.25);
     updateHud();
   }
 });
 // Los marcadores HTML se recolocan después de cada fotograma, con la cámara ya actualizada.
-viewer.scene.postRender.addEventListener(() => pois.render());
+let lastRender = performance.now();
+viewer.scene.postRender.addEventListener(() => {
+  const now = performance.now();
+  pois.render();
+  ads.render(Math.min((now - lastRender) / 1000, 0.1));
+  lastRender = now;
+});
 
 // Acceso para depuración en desarrollo (no se incluye en la web publicada).
-if (import.meta.env.DEV) Object.assign(window, { flyfly: { ufo, pois, startFlight, openSheet, travelTo, showVictory, startAutopilot } });
+if (import.meta.env.DEV) Object.assign(window, { flyfly: { ufo, pois, ads, goHome, startFlight, openSheet, travelTo, showVictory, startAutopilot } });

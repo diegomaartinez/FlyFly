@@ -1,4 +1,5 @@
 import { Cartesian3, HeadingPitchRange, HeadingPitchRoll, Math as CMath, Matrix3, Matrix4, Model, Transforms, CesiumWidget } from '@cesium/engine';
+import { validHeight } from './world';
 
 const R = 6378137;
 const MAX_SPEED = 55; // m/s en horizontal
@@ -7,7 +8,9 @@ const TURN_RATE = 1.4; // rad/s
 const RESPONSE = 2.2; // cuanto mayor, antes alcanza la velocidad deseada (y antes se detiene)
 const MIN_ALTITUDE = 20; // metros sobre el suelo/edificios que hay debajo
 const MAX_ALTITUDE = 500;
-const START_ALTITUDE = 120;
+/** Altura al llegar a una ciudad (vista general) y al viajar a un lugar concreto. */
+export const CITY_ALTITUDE = 500;
+export const PLACE_ALTITUDE = 120;
 
 /** Mandos normalizados entre -1 y 1. */
 export interface Controls { forward: number; strafe: number; turn: number; lift: number }
@@ -35,11 +38,11 @@ export class Craft {
     this.viewer.scene.primitives.add(this.model);
   }
 
-  teleport(lat: number, lng: number, ground = 0) {
+  teleport(lat: number, lng: number, ground = 0, altitude = PLACE_ALTITUDE) {
     this.lat = lat;
     this.lng = lng;
     this.ground = ground;
-    this.height = ground + START_ALTITUDE;
+    this.height = ground + altitude;
     this.vel = { e: 0, n: 0, u: 0 };
   }
 
@@ -93,7 +96,7 @@ export class Craft {
     const h = scene.sampleHeightSupported
       ? scene.sampleHeight(carto, [...this.excluded, ...exclude])
       : scene.globe.getHeight(carto);
-    if (h !== undefined) this.ground = h;
+    if (h !== undefined) this.ground = validHeight(h, this.ground);
   }
 
   render(dt: number) {
@@ -135,6 +138,11 @@ export class Craft {
   /** Acercar (factor < 1) o alejar (factor > 1) la cámara. */
   zoom(factor: number) {
     this.camRange = CMath.clamp(this.camRange * factor, 20, 250);
+  }
+
+  /** Oculta el ovni (al volver al menú principal). */
+  hide() {
+    if (this.model) this.model.show = false;
   }
 
   toggleCamera() {

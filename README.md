@@ -14,13 +14,20 @@ FlyFly te pone a los mandos de un ovni sobre ciudades reales en 3D. Edificios, c
 
 Los lugares más interesantes de la ciudad están escondidos. Un haz de luz y una brújula te guían hasta ellos; al acercarte, el marcador se convierte en una tarjeta con la foto y el nombre del sitio. Encuéntralos todos y descubre su historia antes de visitarlos en persona.
 
+## Dos formas de jugar
+
+- 🧭 **Turismo**: descubre los monumentos, museos y rincones con historia de la ciudad, escondidos hasta que llegas a ellos.
+- 🛍️ **Recreativo**: un mapa de negocios y particulares que se anuncian en la ciudad con su propio lugar, un globo aerostático, un ovni gigante o una avioneta con pancarta.
+
+Elige el modo en el menú principal; puedes volver a él en cualquier momento con el botón de la casa.
+
 ## ¿Qué puedes hacer?
 
 - 🌍 **Volar sobre cualquier ciudad del mundo en 3D**: escribe su nombre y despega.
 - 🎯 **Encontrar lugares escondidos**: monumentos, museos, playas, miradores y rincones con historia. Una brújula y haces de luz te dan pistas de hacia dónde volar.
 - 📖 **Conocer cada lugar**: al descubrirlo se abre una ficha con foto, descripción y enlace a Wikipedia.
 - 🏆 **Completar la ciudad**: el menú de lugares muestra los que has descubierto y cuántos te quedan. Al encontrarlos todos verás tus estadísticas y podrás compartir tu logro.
-- ✨ **Viajar al instante**: teletranspórtate a cualquier lugar ya descubierto desde el menú.
+- ✨ **Viajar al instante**: teletranspórtate a cualquier lugar ya descubierto desde su ficha.
 - 🛸 **Exploración automática**: con la ciudad completa, el ovni recorre solo todos sus lugares mientras disfrutas de las vistas.
 - 🛸 **Pilotar un ovni**: quédate flotando para admirar las vistas, sube, baja o deslízate en cualquier dirección. Cámara exterior o vista de dron.
 - 📱 **Jugar donde quieras**: funciona en el navegador del ordenador, la tableta o el móvil, sin instalar nada.
@@ -39,7 +46,7 @@ Los lugares más interesantes de la ciudad están escondidos. Un haz de luz y un
 | Menú de lugares | Tab | Botón de progreso |
 | Cerrar ficha | Esc | ✕ |
 
-Si sueltas los mandos, el ovni se queda flotando en el sitio. Vuela siempre entre 20 y 500 metros sobre la ciudad, y el indicador muestra la altitud sobre el nivel del mar.
+Si sueltas los mandos, el ovni se queda flotando en el sitio. Llegas a cada ciudad a 500 metros de altura para verla entera, y vuelas siempre entre 20 y 500 metros sobre ella, y el indicador muestra la altitud sobre el nivel del mar.
 
 Para descubrir un lugar hay que llegar a él: a 50 metros o menos.
 
@@ -57,7 +64,7 @@ FlyFly es un escaparate turístico diferente: los visitantes exploran la ciudad 
 
 ## Para negocios locales
 
-Restaurantes, hoteles, tiendas y experiencias pueden aparecer en el mapa con un **marcador destacado y visible desde más lejos**, identificado como patrocinado, con su propia ficha y un botón directo para reservar, comprar o visitar su web.
+Restaurantes, hoteles, tiendas, experiencias o cualquier particular pueden aparecer en el modo recreativo eligiendo su forma: **lugar con foto**, **globo aerostático**, **ovni gigante** o **avioneta con pancarta**, del color que quieran, con su propia ficha, fotos y un botón para reservar, comprar o visitar su web. Se solicita desde la página **Anúnciate**: se marca la ubicación en un mapa, se escriben los textos, se suben las fotos y se ve una vista previa. Todos los anuncios se revisan antes de publicarse y se identifican como patrocinados.
 
 ## Próximamente
 

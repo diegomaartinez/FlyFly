@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#123a5c" />
+  <meta name="description" content="Pon tu negocio en el mapa 3D de FlyFly: como lugar, globo aerostático, ovni gigante o avioneta con pancarta." />
+  <title>Anúnciate en FlyFly</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <script src="legal/titular.js"></script>
+</head>
+<body class="ad-page">
+  <header class="ad-header">
+    <a class="brand" href="./"><span class="brand-mark" data-icon="ufo"></span>FlyFly</a>
+    <a class="btn btn-secondary" href="./">Volver al juego</a>
+  </header>
+
+  <main class="ad-main">
+    <section class="ad-hero">
+      <h1>Pon tu negocio en el mapa</h1>
+      <p class="lead">Aparece en el modo recreativo de FlyFly, el mapa 3D que recorren los jugadores con su ovni.</p>
+    </section>
+
+    <form id="ad-form" class="ad-form" novalidate>
+      <section class="ad-step">
+        <h2><span class="step-num">1</span>Elige cómo quieres aparecer</h2>
+        <div id="ad-types" class="ad-types" role="radiogroup" aria-label="Forma de aparecer"></div>
+        <p id="ad-price-note" class="field-help"></p>
+      </section>
+
+      <section class="ad-step">
+        <h2><span class="step-num">2</span>Marca tu ubicación</h2>
+        <div class="field">
+          <label for="ad-search">Busca tu dirección o haz clic en el mapa</label>
+          <div class="search-row">
+            <input id="ad-search" type="search" placeholder="Calle, número y ciudad" autocomplete="street-address" />
+            <button id="ad-search-btn" class="btn btn-secondary" type="button">Buscar</button>
+          </div>
+        </div>
+        <div id="ad-map" class="ad-map" aria-label="Mapa para elegir la ubicación"></div>
+        <p id="ad-coords" class="field-help">Todavía no has marcado ninguna ubicación.</p>
+      </section>
+
+      <section class="ad-step ad-columns">
+        <div>
+          <h2><span class="step-num">3</span>Tu anuncio</h2>
+          <div class="field">
+            <label for="ad-name">Nombre del negocio o de la persona</label>
+            <input id="ad-name" name="nombre" maxlength="40" required />
+          </div>
+          <div class="field">
+            <label for="ad-desc">Frase corta</label>
+            <input id="ad-desc" name="frase" maxlength="60" placeholder="Ej.: Marisco y cocina gallega" />
+          </div>
+          <div class="field">
+            <label for="ad-text">Texto de la ficha</label>
+            <textarea id="ad-text" name="texto" maxlength="400" rows="4"></textarea>
+            <p class="field-help"><span id="ad-text-count">0</span> / 400 caracteres</p>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="ad-link">Tu web o enlace</label>
+              <input id="ad-link" name="enlace" type="url" placeholder="https://" />
+            </div>
+            <div class="field">
+              <label for="ad-cta">Texto del botón</label>
+              <select id="ad-cta" name="boton">
+                <option>Visitar web</option><option>Reservar</option><option>Comprar</option>
+                <option>Ver carta</option><option>Pedir información</option><option>Llamar</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <span class="label">Color de tu recuadro</span>
+            <div class="color-row">
+              <div id="ad-swatches" class="swatches" role="radiogroup" aria-label="Colores sugeridos"></div>
+              <input id="ad-color" name="color" type="color" value="#e2602f" aria-label="Otro color" />
+            </div>
+          </div>
+          <div class="field">
+            <label for="ad-photos">Fotos (hasta 3, JPG, PNG o WebP de menos de 2 MB)</label>
+            <input id="ad-photos" type="file" accept="image/jpeg,image/png,image/webp" multiple />
+            <div id="ad-photo-list" class="photo-list"></div>
+          </div>
+        </div>
+
+        <aside class="ad-preview">
+          <h3>Así se verá</h3>
+          <div class="preview-stage">
+            <div id="preview" class="marker is-found is-sponsor is-ad preview-marker">
+              <span class="marker-card">
+                <span class="marker-photo"><img id="preview-img" alt="" /></span>
+                <span class="marker-text"><b id="preview-name">Tu negocio</b><small>Patrocinado</small></span>
+              </span>
+              <span class="marker-tail"></span>
+            </div>
+          </div>
+          <p id="preview-type" class="field-help"></p>
+        </aside>
+      </section>
+
+      <section class="ad-step">
+        <h2><span class="step-num">4</span>Contacto y facturación</h2>
+        <div class="field-row">
+          <div class="field">
+            <label for="ad-contact">Persona de contacto</label>
+            <input id="ad-contact" name="contacto" autocomplete="name" required />
+          </div>
+          <div class="field">
+            <label for="ad-email">Email</label>
+            <input id="ad-email" name="email" type="email" autocomplete="email" required />
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="ad-phone">Teléfono (opcional)</label>
+            <input id="ad-phone" name="telefono" type="tel" autocomplete="tel" />
+          </div>
+          <div class="field">
+            <label for="ad-nif">NIF o CIF para la factura</label>
+            <input id="ad-nif" name="nif" required />
+          </div>
+        </div>
+        <div class="field">
+          <label for="ad-months">Duración</label>
+          <select id="ad-months" name="meses">
+            <option value="1">1 mes</option><option value="3">3 meses</option><option value="6">6 meses</option><option value="12">12 meses</option>
+          </select>
+        </div>
+        <label class="check">
+          <input id="ad-accept" type="checkbox" required />
+          <span>He leído y acepto las <a href="legal/condiciones-anunciantes.html" target="_blank" rel="noopener">condiciones para anunciantes</a> y la <a href="legal/privacidad.html" target="_blank" rel="noopener">política de privacidad</a>. Confirmo que tengo derechos sobre las fotos y textos que envío.</span>
+        </label>
+        <p id="ad-error" class="field-help is-error" role="alert"></p>
+        <button id="ad-submit" class="btn btn-primary btn-lg" type="submit">Enviar solicitud</button>
+        <p class="field-help">Revisaremos tu anuncio antes de publicarlo. No se cobra nada hasta que lo aprobemos.</p>
+      </section>
+    </form>
+
+    <section id="ad-done" class="ad-step ad-done" hidden>
+      <span class="victory-badge" data-icon="check"></span>
+      <h2>¡Solicitud preparada!</h2>
+      <p id="ad-done-text"></p>
+      <div class="victory-actions">
+        <a id="ad-pay" class="btn btn-primary" target="_blank" rel="noopener" hidden>Pagar ahora</a>
+        <a id="ad-mail" class="btn btn-primary" hidden>Enviar por email</a>
+        <button id="ad-download" class="btn btn-secondary" type="button" hidden>Descargar solicitud</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="ad-footer">
+    <a href="legal/aviso-legal.html">Aviso legal</a>
+    <a href="legal/privacidad.html">Privacidad</a>
+    <a href="legal/condiciones-anunciantes.html">Condiciones para anunciantes</a>
+  </footer>
+
+  <script type="module" src="/src/anunciate.ts"></script>
+</body>
+</html>

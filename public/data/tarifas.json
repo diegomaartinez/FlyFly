@@ -1,0 +1,29 @@
+{
+  "nota": "Precios por mes. IVA no incluido.",
+  "tipos": {
+    "lugar": {
+      "nombre": "Lugar en el mapa",
+      "descripcion": "Tarjeta con tu foto y tu nombre junto a tu local, visible desde 3 km.",
+      "precio": "Precio a consultar",
+      "pago": ""
+    },
+    "globo": {
+      "nombre": "Globo aerostático",
+      "descripcion": "Un globo de tus colores flotando a 160 m sobre tu local.",
+      "precio": "Precio a consultar",
+      "pago": ""
+    },
+    "ovni": {
+      "nombre": "Ovni gigante",
+      "descripcion": "Una nave tres veces más grande que la del jugador, girando sobre tu local.",
+      "precio": "Precio a consultar",
+      "pago": ""
+    },
+    "avioneta": {
+      "nombre": "Avioneta con pancarta",
+      "descripcion": "Una avioneta de tu color que da vueltas sobre la zona remolcando tu pancarta.",
+      "precio": "Precio a consultar",
+      "pago": ""
+    }
+  }
+}

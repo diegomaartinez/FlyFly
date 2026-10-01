@@ -49,6 +49,47 @@ En móvil aparecen un joystick y botones táctiles. Se puede tocar cualquier mar
 
 Artículos geolocalizados de Wikipedia con foto, en cualquier ciudad del mundo. El buscador usa Nominatim (OpenStreetMap) en modo libre y Google (vía Cesium ion o clave propia) en modo 3D, porque las teselas de Google solo pueden usarse con su geocodificador.
 
+## Modos de juego
+
+El menú principal (pantalla de inicio, a la que se vuelve con el botón de la casa) tiene dos modos, guardados en `flyfly:mode`:
+
+- **Turismo**: lugares de Wikipedia por descubrir (todo lo descrito en «Mecánica de juego»), patrocinadores de `public/data/patrocinadores.json`, ciudad completada y exploración automática.
+- **Recreativo**: anunciantes de `public/data/anunciantes.json` a menos de 8 km de la ciudad (`src/advertisers.ts`). Sin descubrimiento ni progreso; el menú lateral lista los negocios y su ficha muestra sus textos, fotos y botón.
+
+Formas de aparecer en el modo recreativo (`type`):
+
+| Tipo | Se ve como |
+|---|---|
+| `lugar` | Tarjeta con foto a 35 m sobre el suelo, como los lugares de turismo |
+| `globo` | Globo aerostático del color elegido a 160 m, balanceándose |
+| `ovni` | Ovni 3 veces mayor que el del jugador, teñido del color elegido, girando a 120 m |
+| `avioneta` | Avioneta del color elegido con pancarta, dando vueltas de 350 m de radio a 220 m |
+
+Los modelos del globo y la avioneta se generan en el navegador con el color de cada anunciante (`src/models.ts`). Todas las etiquetas muestran «Patrocinado» y un borde del color elegido.
+
+Formato de `public/data/anunciantes.json`:
+
+```json
+[
+  {
+    "id": "hotel-atlantico", "name": "Hotel Atlántico", "type": "globo",
+    "lat": 43.3712, "lng": -8.3958, "color": "#d6336c",
+    "description": "Vistas al mar en pleno centro", "text": "Texto de la ficha",
+    "images": ["anunciantes/hotel-atlantico-1.jpg"],
+    "link": "https://ejemplo.com", "cta": "Reservar", "until": "2026-12-31"
+  }
+]
+```
+
+## Página Anúnciate
+
+`anunciate.html` + `src/anunciate.ts` (segunda página del build). El anunciante elige tipo (con las tarifas de `public/data/tarifas.json`), marca la ubicación en un mapa Leaflet con teselas de OpenStreetMap, escribe textos, elige color, sube hasta 3 fotos y ve una vista previa. Al enviar:
+
+- Con `VITE_FORM_ENDPOINT`, la solicitud (JSON + fotos) se envía por `POST multipart` a ese servicio y, si la tarifa tiene enlace de pago (`pago`), se ofrece pagar.
+- Sin él, se ofrece enviarla por email (al de `public/legal/titular.js`) y descargar el archivo de la solicitud con las fotos.
+
+Para publicar una solicitud descargada: `node scripts/importar-anuncio.mjs solicitud-flyfly-xxx.json` (guarda las fotos en `public/anunciantes/` y añade el anuncio a `anunciantes.json`).
+
 ## Mecánica de juego
 
 Al elegir una ciudad se cargan de golpe hasta 80 lugares de Wikipedia (centro + anillo de 3,5 km), así el recuento es fijo. Cada lugar pasa por estos estados (`src/pois.ts`):
@@ -68,7 +109,7 @@ El progreso se guarda en el navegador (`localStorage`) y se puede reiniciar desd
 
 ## Viajes, ciudad completada y piloto automático (`src/main.ts`)
 
-- **Viajar** (menú de lugares o ficha): animación de teletransporte de 2 a 4 s mientras se mide el terreno y cargan las teselas; el ovni aparece 150 m al sur del lugar.
+- **Viajar** (botón «Viajar aquí» de la ficha, que se abre al pulsar un lugar del menú): animación de teletransporte de 2 a 4 s mientras se mide el terreno y cargan las teselas; el ovni aparece 150 m al sur del lugar.
 - **Ciudad completada**: pantalla con confeti, lugares, tiempo desde el primer descubrimiento y km recorridos, botón de compartir (Web Share API o copiar enlace) y acceso a la exploración automática.
 - **Exploración automática**: disponible siempre que la ciudad esté completa (botón en la barra superior). Empieza en un lugar al azar y vuela en línea recta al más cercano no visitado, a 110 m sobre el suelo, con una pausa de 2,5 s en cada uno. Cualquier mando manual la detiene.
 
@@ -88,7 +129,7 @@ Obligatorias y ya integradas: créditos de Google/Cesium en pantalla (no ocultar
 
 ## Ovni
 
-`public/models/ufo.glb` se genera con `node scripts/make-ufo.mjs` (formas y colores editables en el script). La física está en `src/flight.ts`: el ovni se mueve como un dron, con inercia suave, y se queda flotando al soltar los mandos. Su altura se mantiene entre 20 y 500 m sobre lo que tiene debajo (suelo o tejados). Al arrastrar en horizontal cambia el rumbo, así que "adelante" es siempre hacia donde mira la cámara.
+`public/models/ufo.glb` se genera con `node scripts/make-ufo.mjs` (formas y colores editables en el script). La física está en `src/flight.ts`: el ovni se mueve como un dron, con inercia suave, y se queda flotando al soltar los mandos. Su altura se mantiene entre 20 y 500 m sobre lo que tiene debajo (suelo o tejados). Al llegar a una ciudad aparece a 500 m (vista general); al viajar a un lugar, a 120 m. Al arrastrar en horizontal cambia el rumbo, así que "adelante" es siempre hacia donde mira la cámara.
 
 ## Rendimiento del mapa
 
@@ -104,6 +145,10 @@ src/main.ts     interfaz (inicio, carga, ficha, menú, ajustes), controles y buc
 src/geoid.ts    altitud sobre el nivel del mar (geoide EGM96)
 src/icons.ts    iconos Phosphor usados en la interfaz
 src/ads.ts      publicidad AdSense (apagada si no hay VITE_ADSENSE_CLIENT)
+src/advertisers.ts  anunciantes del modo recreativo (lugar, globo, ovni, avioneta)
+src/models.ts   modelos 3D de globo y avioneta generados con el color de cada anunciante
+src/anunciate.ts página Anúnciate (formulario, mapa, vista previa y envío)
+scripts/importar-anuncio.mjs  publica una solicitud descargada
 public/legal/   aviso legal, privacidad, cookies y accesibilidad (datos del titular en titular.js)
 public/_headers cabeceras de seguridad para Cloudflare Pages o Netlify
 public/data/patrocinadores.json  negocios patrocinados
