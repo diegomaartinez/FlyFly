@@ -1,12 +1,12 @@
 import {
   Cartesian3, Cartographic, Cesium3DTileset, createGooglePhotorealistic3DTileset, GeocoderService, GoogleGeocoderService, ImageryLayer, Ion,
-  IonGeocoderService, IonGeocodeProviderType, JulianDate, Rectangle, RequestScheduler, UrlTemplateImageryProvider, Viewer, WebMercatorTilingScheme,
-} from 'cesium';
+  IonGeocoderService, IonGeocodeProviderType, JulianDate, Rectangle, RequestScheduler, UrlTemplateImageryProvider, CesiumWidget, WebMercatorTilingScheme,
+} from '@cesium/engine';
 
 export type WorldMode = 'google' | 'ion' | 'free';
 
 export interface World {
-  viewer: Viewer;
+  viewer: CesiumWidget;
   mode: WorldMode;
   tileset?: Cesium3DTileset;
   /** Motivo por el que no se pudo cargar el 3D, si se cayó al modo libre. */
@@ -76,10 +76,8 @@ const pnoa = () =>
 export async function createWorld(container: HTMLElement): Promise<World> {
   if (ionToken) Ion.defaultAccessToken = ionToken;
 
-  const viewer = new Viewer(container, {
-    animation: false, timeline: false, baseLayerPicker: false, geocoder: false, homeButton: false,
-    sceneModePicker: false, navigationHelpButton: false, fullscreenButton: false, infoBox: false,
-    selectionIndicator: false,
+  // CesiumWidget (solo el motor): sin los widgets de Viewer, que usan Knockout y necesitan 'unsafe-eval' en la CSP.
+  const viewer = new CesiumWidget(container, {
     baseLayer: new ImageryLayer(sentinel()),
   });
 

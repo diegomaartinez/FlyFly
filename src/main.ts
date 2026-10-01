@@ -1,10 +1,11 @@
-import 'cesium/Build/Cesium/Widgets/widgets.css';
+import '@cesium/engine/Source/Widget/CesiumWidget.css';
 import '@fontsource-variable/outfit';
 import './style.css';
 import { Controls, Craft } from './flight';
 import { geoidHeight, loadGeoid } from './geoid';
 import { hydrateIcons, icon, IconName } from './icons';
-import { bearing, distance, fetchImageCredit, fetchSummary, formatDistance, loadCityPois, Poi, PoiLayer, wikiUrl } from './pois';
+import { adsEnabled, manageConsent, showAd } from './ads';
+import { bearing, distance, fetchImageCredit, fetchSummary, formatDistance, loadCityPois, loadSponsors, Poi, PoiLayer, wikiUrl } from './pois';
 import { createWorld, geocode, GeoResult, groundHeight, initialQuality, Quality, setQuality, World } from './world';
 // Sonido desactivado (para reactivarlo, descomenta las líneas marcadas con "Sonido").
 // import { EngineSound } from './sound'; // Sonido
@@ -234,6 +235,7 @@ async function flyTo(place: GeoResult) {
 
   // Los lugares se piden a la vez que se coloca la cámara y se mide el terreno.
   const places = loadCityPois(place.lat, place.lng);
+  const sponsors = loadSponsors(place.lat, place.lng);
 
   step('city', 'active');
   ufo.teleport(place.lat, place.lng);
@@ -251,6 +253,9 @@ async function flyTo(place: GeoResult) {
   } catch {
     step('places', 'fail');
   }
+  try {
+    pois.add(await sponsors);
+  } catch { /* sin patrocinadores */ }
   setProgress(0.35);
 
   step('tiles', 'active');
@@ -303,6 +308,8 @@ async function openSheet(poi: Poi, fromDiscovery = false) {
   const credit = $('sheet-credit');
   credit.textContent = '';
   $('sheet').hidden = false;
+  if (adsEnabled && !poi.sponsor) showAd($('sheet-ad'));
+  else $('sheet-ad').hidden = true;
 
   const [summary, photo] = await Promise.all([
     poi.wikiTitle ? fetchSummary(poi.wikiTitle).catch(() => undefined) : undefined,
@@ -442,6 +449,11 @@ $('reset-progress').onclick = () => {
   closePopovers();
   updateHud();
   toast({ title: 'Progreso reiniciado', iconName: 'reset' });
+};
+$('consent-btn').hidden = !adsEnabled;
+$('consent-btn').onclick = () => {
+  closePopovers();
+  if (!manageConsent()) toast({ title: 'No hay cookies que gestionar ahora mismo', iconName: 'cookie' });
 };
 const about = $<HTMLDialogElement>('about');
 $('about-btn').onclick = () => { closePopovers(); about.showModal(); };

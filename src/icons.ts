@@ -5,10 +5,12 @@ import arrowRight from '@phosphor-icons/core/assets/bold/arrow-right-bold.svg?ra
 import arrowUp from '@phosphor-icons/core/assets/bold/arrow-up-bold.svg?raw';
 import camera from '@phosphor-icons/core/assets/bold/camera-rotate-bold.svg?raw';
 import check from '@phosphor-icons/core/assets/bold/check-bold.svg?raw';
+import cookie from '@phosphor-icons/core/assets/bold/cookie-bold.svg?raw';
 import close from '@phosphor-icons/core/assets/bold/x-bold.svg?raw';
 import external from '@phosphor-icons/core/assets/bold/arrow-square-out-bold.svg?raw';
 import gear from '@phosphor-icons/core/assets/bold/gear-six-bold.svg?raw';
 import info from '@phosphor-icons/core/assets/bold/info-bold.svg?raw';
+import legal from '@phosphor-icons/core/assets/bold/scales-bold.svg?raw';
 import keyboard from '@phosphor-icons/core/assets/bold/keyboard-bold.svg?raw';
 import loader from '@phosphor-icons/core/assets/bold/circle-notch-bold.svg?raw';
 import nav from '@phosphor-icons/core/assets/fill/navigation-arrow-fill.svg?raw';
@@ -23,7 +25,7 @@ import ufo from '@phosphor-icons/core/assets/fill/flying-saucer-fill.svg?raw';
 import warning from '@phosphor-icons/core/assets/bold/warning-circle-bold.svg?raw';
 
 const ICONS = {
-  altitude, arrowDown, arrowRight, arrowUp, camera, check, close, external, gear, info, keyboard, loader,
+  altitude, arrowDown, arrowRight, arrowUp, camera, check, close, cookie, external, gear, info, keyboard, legal, loader,
   nav, pin, question, recent, reset, search, star, target, ufo, warning,
 };
 export type IconName = keyof typeof ICONS;

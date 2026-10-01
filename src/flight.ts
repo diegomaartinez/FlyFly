@@ -1,4 +1,4 @@
-import { Cartesian3, HeadingPitchRange, HeadingPitchRoll, Math as CMath, Matrix3, Matrix4, Model, Transforms, Viewer } from 'cesium';
+import { Cartesian3, HeadingPitchRange, HeadingPitchRoll, Math as CMath, Matrix3, Matrix4, Model, Transforms, CesiumWidget } from '@cesium/engine';
 
 const R = 6378137;
 const MAX_SPEED = 55; // m/s en horizontal
@@ -28,7 +28,7 @@ export class Craft {
   private spin = new Matrix3();
   private model?: Model;
 
-  constructor(private viewer: Viewer) {}
+  constructor(private viewer: CesiumWidget) {}
 
   async load(url: string) {
     this.model = await Model.fromGltfAsync({ url, scale: 2 });

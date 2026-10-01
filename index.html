@@ -6,6 +6,12 @@
   <meta name="theme-color" content="#123a5c" />
   <meta name="description" content="Sobrevuela cualquier ciudad del mundo en 3D con un ovni y descubre sus lugares más interesantes." />
   <title>FlyFly · Sobrevuela cualquier ciudad</title>
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="es_ES" />
+  <meta property="og:site_name" content="FlyFly" />
+  <meta property="og:title" content="FlyFly · Sobrevuela cualquier ciudad" />
+  <meta property="og:description" content="Pilota un ovni sobre ciudades reales en 3D y encuentra los lugares escondidos." />
+  <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
 </head>
 <body>
@@ -60,6 +66,7 @@
         <a id="sheet-link" class="btn btn-secondary" target="_blank" rel="noopener">Leer en Wikipedia <span data-icon="external"></span></a>
       </div>
       <p id="sheet-credit" class="credit"></p>
+      <div id="sheet-ad" class="ad-slot" hidden><span class="ad-label">Publicidad</span></div>
     </div>
   </aside>
 
@@ -96,6 +103,8 @@
     <div class="popover-actions">
       <button id="reset-progress" class="row-btn" type="button"><span data-icon="reset"></span>Reiniciar progreso de esta ciudad</button>
       <button id="about-btn" class="row-btn" type="button"><span data-icon="info"></span>Créditos y fuentes de datos</button>
+      <a class="row-btn" href="legal/aviso-legal.html" target="_blank" rel="noopener"><span data-icon="legal"></span>Aviso legal y privacidad</a>
+      <button id="consent-btn" class="row-btn" type="button" hidden><span data-icon="cookie"></span>Gestionar cookies</button>
     </div>
   </div>
 
@@ -176,6 +185,11 @@
         <div id="recent-list" class="recent-list"></div>
       </div>
       <p id="mode-note" class="note"></p>
+      <nav class="legal-links" aria-label="Información legal">
+        <a href="legal/aviso-legal.html" target="_blank" rel="noopener">Aviso legal</a>
+        <a href="legal/privacidad.html" target="_blank" rel="noopener">Privacidad</a>
+        <a href="legal/cookies.html" target="_blank" rel="noopener">Cookies</a>
+      </nav>
     </div>
   </div>
 

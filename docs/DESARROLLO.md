@@ -95,5 +95,11 @@ src/pois.ts     lugares de Wikipedia, descubrimiento, marcadores HTML y haces de
 src/main.ts     interfaz (inicio, carga, ficha, menú, ajustes), controles y bucle principal
 src/geoid.ts    altitud sobre el nivel del mar (geoide EGM96)
 src/icons.ts    iconos Phosphor usados en la interfaz
+src/ads.ts      publicidad AdSense (apagada si no hay VITE_ADSENSE_CLIENT)
+public/legal/   aviso legal, privacidad, cookies y accesibilidad (datos del titular en titular.js)
+public/_headers cabeceras de seguridad para Cloudflare Pages o Netlify
+public/data/patrocinadores.json  negocios patrocinados
 src/sound.ts    zumbido del ovni y sonido de descubrimiento (desactivado: ver comentarios "Sonido" en main.ts)
 ```
+
+Para publicar en un dominio propio con publicidad y patrocinios, sigue [LANZAMIENTO.md](LANZAMIENTO.md).

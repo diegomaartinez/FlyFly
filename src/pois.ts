@@ -1,7 +1,7 @@
 import {
   ArcType, Cartesian2, Cartesian3, Cartographic, Color, DistanceDisplayCondition, Entity, PolylineGlowMaterialProperty,
-  SceneTransforms, Viewer,
-} from 'cesium';
+  SceneTransforms, CesiumWidget,
+} from '@cesium/engine';
 import { icon } from './icons';
 
 export interface Sponsor {
@@ -142,7 +142,7 @@ export class PoiLayer {
   private win = new Cartesian2();
   private toMarker = new Cartesian3();
 
-  constructor(private viewer: Viewer, private container: HTMLElement) {}
+  constructor(private viewer: CesiumWidget, private container: HTMLElement) {}
 
   clear() {
     for (const m of this.markers.values()) {
@@ -352,6 +352,32 @@ export class PoiLayer {
       if (this.isDiscovered(p)) discovered++;
     });
     return { discovered, total };
+  }
+}
+
+/** Patrocinador tal y como se escribe en public/data/patrocinadores.json. */
+interface SponsorEntry {
+  id: string; name: string; lat: number; lng: number;
+  description?: string; image?: string; link?: string; cta?: string;
+  /** Fecha de fin del patrocinio (AAAA-MM-DD); después deja de mostrarse. */
+  until?: string;
+}
+
+/** Patrocinadores vigentes a menos de 8 km del centro de la ciudad. */
+export async function loadSponsors(lat: number, lng: number): Promise<Poi[]> {
+  try {
+    const res = await fetch('data/patrocinadores.json', { cache: 'no-cache' });
+    if (!res.ok) return [];
+    const list: SponsorEntry[] = await res.json();
+    const today = new Date().toISOString().slice(0, 10);
+    return list
+      .filter((s) => (!s.until || s.until >= today) && distance(s, { lat, lng }) < 8000)
+      .map((s) => ({
+        id: `sp_${s.id}`, name: s.name, lat: s.lat, lng: s.lng, description: s.description,
+        image: s.image, thumb: s.image, sponsor: { tier: 'gold', cta: s.cta, link: s.link },
+      }));
+  } catch {
+    return [];
   }
 }
 
