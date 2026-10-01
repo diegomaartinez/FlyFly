@@ -1,4 +1,4 @@
-/** Zumbido de motor de hélice sintetizado con Web Audio (sin ficheros de audio). */
+/** Zumbido de ovni sintetizado con Web Audio (sin ficheros de audio). */
 export class EngineSound {
   private ctx?: AudioContext;
   private osc?: OscillatorNode;
@@ -9,7 +9,7 @@ export class EngineSound {
     if (this.ctx) return;
     this.ctx = new AudioContext();
     this.osc = this.ctx.createOscillator();
-    this.osc.type = 'triangle';
+    this.osc.type = 'sine';
     const filter = this.ctx.createBiquadFilter();
     filter.type = 'lowpass';
     filter.frequency.value = 400;
@@ -19,11 +19,13 @@ export class EngineSound {
     this.osc.start();
   }
 
-  update(throttle: number, speed: number) {
+  update(speed: number) {
     if (!this.ctx || !this.osc || !this.gain) return;
     const t = this.ctx.currentTime;
-    this.osc.frequency.setTargetAtTime(38 + throttle * 45 + speed * 0.15, t, 0.3);
-    this.gain.gain.setTargetAtTime(this.muted ? 0 : 0.015 + throttle * 0.035, t, 0.3);
+    // Ondulación lenta al flotar y tono más agudo al moverse.
+    const wobble = Math.sin(t * 5) * 6;
+    this.osc.frequency.setTargetAtTime(95 + speed * 1.6 + wobble, t, 0.1);
+    this.gain.gain.setTargetAtTime(this.muted ? 0 : 0.03 + Math.min(speed, 60) * 0.0006, t, 0.2);
   }
 
   /** Arpegio alegre al descubrir un lugar. */

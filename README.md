@@ -10,7 +10,7 @@
 
 ---
 
-FlyFly te pone a los mandos de un avión de papel sobre ciudades reales en 3D. Edificios, calles, playas y monumentos tal y como son, vistos desde el aire con la misma calidad que Google Earth.
+FlyFly te pone a los mandos de un ovni sobre ciudades reales en 3D. Edificios, calles, playas y monumentos tal y como son, vistos desde el aire con la misma calidad que Google Earth.
 
 Los lugares más interesantes de la ciudad están escondidos en **globos aerostáticos** que solo aparecen cuando te acercas. Encuéntralos todos y descubre su historia, sus fotos y todo lo que merece la pena saber antes de visitarlos en persona.
 
@@ -20,20 +20,23 @@ Los lugares más interesantes de la ciudad están escondidos en **globos aerost�
 - 🎈 **Encontrar lugares escondidos**: monumentos, museos, playas, miradores y rincones con historia. Una brújula te da pistas de hacia dónde volar.
 - 📖 **Conocer cada lugar**: al pasar cerca de un globo se abre una ficha con fotos y una descripción del sitio.
 - 🏆 **Completar la ciudad**: el menú de lugares muestra los que has descubierto y cuántos te quedan. Tu progreso se guarda.
-- ✈ **Pilotar un avión de papel**: cámara exterior o vista en primera persona.
+- 🛸 **Pilotar un ovni**: quédate flotando para admirar las vistas, sube, baja o deslízate en cualquier dirección. Cámara exterior o vista de dron.
 - 📱 **Jugar donde quieras**: funciona en el navegador del ordenador, la tableta o el móvil, sin instalar nada.
 
-## Cómo se vuela
+## Cómo se pilota
 
 | | Ordenador | Móvil |
 |---|---|---|
-| Subir / bajar | ↑ ↓ | Joystick arriba / abajo |
+| Avanzar / retroceder | ↑ ↓ (o W S) | Joystick arriba / abajo |
 | Girar | ← → | Joystick a los lados |
-| Acelerar / frenar | W o Espacio / S | Botones 🚀 / 🐢 |
+| Desplazarse de lado | A D | |
+| Subir / bajar | Espacio / Shift | Botones ⬆ / ⬇ |
 | Cambiar cámara | C | Botón 🎥 |
 | Menú de lugares | Tab | Botón 🎈 |
 | Silenciar sonido | M | |
 | Cerrar ficha | Esc | ✕ |
+
+Si sueltas los mandos, el ovni se queda flotando en el sitio.
 
 En el menú de lugares puedes volver a abrir la ficha de cualquier sitio que ya hayas descubierto.
 

@@ -55,6 +55,10 @@ export async function createWorld(container: HTMLElement): Promise<World> {
   scene.screenSpaceCameraController.enableInputs = false;
   if (scene.skyAtmosphere) scene.skyAtmosphere.show = true;
   scene.fog.enabled = true;
+  // Lo lejano (más allá de ~5-10 km) se carga con muy poco detalle y queda tras la niebla:
+  // así las teselas cercanas de la ciudad cargan antes.
+  scene.fog.density = 0.0012;
+  scene.fog.screenSpaceErrorFactor = 8;
   scene.postProcessStages.fxaa.enabled = true;
   // Mediodía de verano: sol alto y cielo luminoso.
   viewer.clock.currentTime = JulianDate.fromIso8601('2026-06-21T11:00:00Z');
@@ -65,7 +69,13 @@ export async function createWorld(container: HTMLElement): Promise<World> {
   try {
     const tileset = await createGooglePhotorealistic3DTileset(
       { key: googleKey, onlyUsingWithGoogleGeocoder: true },
-      { maximumScreenSpaceError: tileDetail },
+      {
+        maximumScreenSpaceError: tileDetail,
+        // Reduce mucho el detalle de lo que queda cerca del horizonte.
+        dynamicScreenSpaceErrorDensity: 2.0e-3,
+        dynamicScreenSpaceErrorFactor: 48,
+        dynamicScreenSpaceErrorHeightFalloff: 0.5,
+      },
     );
     scene.primitives.add(tileset);
     scene.globe.show = false;
@@ -75,18 +85,6 @@ export async function createWorld(container: HTMLElement): Promise<World> {
     console.error('No se pudo cargar el 3D fotorrealista', err);
     return { viewer, mode: 'free', error: err instanceof Error ? err.message : String(err) };
   }
-}
-
-/** Espera a que carguen las teselas visibles (o hasta `timeout` ms). */
-export function waitForTiles(world: World, timeout = 15000): Promise<void> {
-  const { tileset, viewer } = world;
-  return new Promise((resolve) => {
-    const done = () => { clearTimeout(timer); remove(); resolve(); };
-    const timer = setTimeout(done, timeout);
-    const remove = tileset
-      ? tileset.allTilesLoaded.addEventListener(done)
-      : viewer.scene.globe.tileLoadProgressEvent.addEventListener((n: number) => n === 0 && done());
-  });
 }
 
 /** Altura del suelo (terreno + edificios) en un punto, esperando a que carguen las teselas. */

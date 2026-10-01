@@ -1,6 +1,6 @@
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 import './style.css';
-import { Controls, Plane } from './flight';
+import { Controls, Craft } from './flight';
 import { bearing, distance, fetchSummary, loadCityPois, Poi, PoiLayer } from './pois';
 import { createWorld, geocode, GeoResult, groundHeight, World } from './world';
 import { EngineSound } from './sound';
@@ -10,10 +10,10 @@ const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getEleme
 
 const world = await createWorld($('world'));
 const { viewer } = world;
-const plane = new Plane(viewer);
+const ufo = new Craft(viewer);
 const pois = new PoiLayer(viewer);
 const sound = new EngineSound();
-await plane.load('models/paper-plane.glb');
+await ufo.load('models/ufo.glb');
 
 $('mode-note').textContent = world.error
   ? `No se pudo cargar la ciudad en 3D (${world.error}). Revisa el token de Cesium ion. Mostrando ortofoto plana.`
@@ -127,11 +127,11 @@ async function flyTo(place: GeoResult) {
 
   // 1. Coloca la cámara sobre la ciudad para que empiecen a cargar sus teselas y mide la altura del suelo.
   step('city', 'active');
-  plane.teleport(place.lat, place.lng, 0);
-  plane.render(0);
+  ufo.teleport(place.lat, place.lng);
+  ufo.render(0);
   const ground = await groundHeight(world, place.lat, place.lng);
-  plane.teleport(place.lat, place.lng, 0, ground);
-  plane.render(0);
+  ufo.teleport(place.lat, place.lng, ground);
+  ufo.render(0);
   step('city', 'done');
   setProgress(0.15);
 
@@ -164,8 +164,8 @@ function renderMenu() {
 
   const hints = $('menu-hints');
   hints.innerHTML = '';
-  for (const { poi, dist } of pois.hints(plane.lat, plane.lng)) {
-    const rel = bearing(plane, poi) - (plane.heading * 180) / Math.PI;
+  for (const { poi, dist } of pois.hints(ufo.lat, ufo.lng)) {
+    const rel = bearing(ufo, poi) - (ufo.heading * 180) / Math.PI;
     const li = document.createElement('li');
     li.innerHTML = `<span class="hint-arrow" style="transform: rotate(${rel}deg)">▲</span><b>???</b><small>${dist > 1000 ? `${(dist / 1000).toFixed(1)} km` : `${Math.round(dist)} m`}</small>`;
     hints.append(li);
@@ -245,12 +245,12 @@ new ScreenSpaceEventHandler(viewer.scene.canvas).setInputAction((e: { position: 
 // ---------- Controles ----------
 const keys = new Set<string>();
 const stick = { x: 0, y: 0 };
-let touchThrottle = 0;
+let touchLift = 0;
 
 window.addEventListener('keydown', (e) => {
   if (e.target instanceof HTMLInputElement) return;
   keys.add(e.code);
-  if (e.code === 'KeyC') plane.toggleCamera();
+  if (e.code === 'KeyC') ufo.toggleCamera();
   if (e.code === 'KeyM') sound.toggle();
   if (e.code === 'Escape') { closeCard(); closeMenu(); }
   if (e.code === 'Tab') { e.preventDefault(); $('menu-btn').click(); }
@@ -264,10 +264,10 @@ const axis = (neg: string[], pos: string[]) =>
 
 function readControls(): Controls {
   return {
-    pitch: axis(['ArrowDown'], ['ArrowUp']) - stick.y,
-    roll: axis(['ArrowLeft'], ['ArrowRight']) + stick.x,
-    yaw: axis(['KeyA'], ['KeyD']),
-    throttle: axis(['KeyS', 'ControlLeft'], ['KeyW', 'Space', 'ShiftLeft']) + touchThrottle,
+    forward: axis(['ArrowDown', 'KeyS'], ['ArrowUp', 'KeyW']) - stick.y,
+    turn: axis(['ArrowLeft'], ['ArrowRight']) + stick.x,
+    strafe: axis(['KeyA'], ['KeyD']),
+    lift: axis(['ShiftLeft', 'ShiftRight', 'KeyF'], ['Space', 'KeyR']) + touchLift,
   };
 }
 
@@ -286,11 +286,11 @@ stickEl.addEventListener('pointermove', (e) => {
 const releaseStick = () => { stick.x = stick.y = 0; knob.style.transform = ''; };
 stickEl.addEventListener('pointerup', releaseStick);
 stickEl.addEventListener('pointercancel', releaseStick);
-document.querySelectorAll<HTMLButtonElement>('[data-throttle]').forEach((b) => {
-  b.onpointerdown = () => (touchThrottle = Number(b.dataset.throttle));
-  b.onpointerup = b.onpointerleave = () => (touchThrottle = 0);
+document.querySelectorAll<HTMLButtonElement>('[data-lift]').forEach((b) => {
+  b.onpointerdown = () => (touchLift = Number(b.dataset.lift));
+  b.onpointerup = b.onpointerleave = () => (touchLift = 0);
 });
-$('cam-btn').onclick = () => plane.toggleCamera();
+$('cam-btn').onclick = () => ufo.toggleCamera();
 
 // ---------- HUD ----------
 let bannerTimer = 0;
@@ -308,8 +308,7 @@ function banner(text: string, kind: 'found' | 'city' | 'info') {
 }
 
 function updateHud() {
-  $('boost').style.width = `${plane.throttle * 100}%`;
-  const { found, target } = pois.update(plane.lat, plane.lng);
+  const { found, target } = pois.update(ufo.lat, ufo.lng);
   if (found) {
     sound.chime();
     banner(found.name, 'found');
@@ -323,10 +322,10 @@ function updateHud() {
   $('nearest').hidden = !target;
   if (target) {
     $('nearest-dist').textContent = target.dist > 1000 ? `${(target.dist / 1000).toFixed(1)} km` : `${Math.round(target.dist)} m`;
-    const rel = bearing(plane, target.poi) - (plane.heading * 180) / Math.PI;
+    const rel = bearing(ufo, target.poi) - (ufo.heading * 180) / Math.PI;
     $('nearest-arrow').style.transform = `rotate(${rel}deg)`;
   }
-  if (openPoi && distance(plane, openPoi) > 1200) closeCard();
+  if (openPoi && distance(ufo, openPoi) > 1200) closeCard();
   if (!$('menu').hidden) renderMenu();
 }
 
@@ -339,17 +338,17 @@ viewer.scene.preUpdate.addEventListener(() => {
   const dt = Math.min((now - last) / 1000, 0.1);
   last = now;
   if (paused) return;
-  plane.update(dt, readControls());
-  plane.render(dt);
-  sound.update(plane.throttle, plane.speed);
+  ufo.update(dt, readControls());
+  ufo.render(dt);
+  sound.update(ufo.speed);
 
   slowTimer += dt;
   if (slowTimer > 0.25) {
     slowTimer = 0;
-    plane.sampleGround();
+    ufo.sampleGround();
     updateHud();
   }
 });
 
 // Acceso para depuración en desarrollo (no se incluye en la web publicada).
-if (import.meta.env.DEV) Object.assign(window, { flyfly: { plane, pois, startFlight } });
+if (import.meta.env.DEV) Object.assign(window, { flyfly: { ufo, pois, startFlight } });

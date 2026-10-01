@@ -34,12 +34,12 @@ npm run dev
 
 | Teclado | Acción |
 |---|---|
-| ↑ ↓ | subir / bajar morro |
-| ← → | alabear (girar) |
-| W o Espacio / S | acelerón / freno (mientras se mantienen) |
-| A / D | timón |
-| C | cámara exterior / cabina |
-| M | silenciar motor |
+| ↑ ↓ / W S | avanzar / retroceder |
+| ← → | girar |
+| A / D | desplazarse de lado |
+| Espacio (o R) / Shift (o F) | subir / bajar |
+| C | cámara exterior / dron |
+| M | silenciar |
 | Tab | menú de lugares |
 | Esc | cerrar ficha / menú |
 
@@ -56,16 +56,20 @@ Los lugares patrocinados se representan con el campo `sponsor` de `Poi` (`src/po
 
 Los globos están ocultos: aparecen a 1 km y se descubren al pasar a menos de 220 m. El progreso se guarda en el navegador (`localStorage`). La brújula señala el lugar sin descubrir más cercano.
 
-## Avión de papel
+## Ovni
 
-`public/models/paper-plane.glb` se genera con `node scripts/make-paper-plane.mjs` (formas y colores editables en el script).
+`public/models/ufo.glb` se genera con `node scripts/make-ufo.mjs` (formas y colores editables en el script). La física está en `src/flight.ts`: el ovni se mueve como un dron, con inercia suave, y se queda flotando al soltar los mandos.
+
+## Rendimiento del mapa
+
+Para que la ciudad cargue antes, lo lejano se pide con muy poco detalle: niebla más densa (`scene.fog`) y reducción dinámica de detalle hacia el horizonte (`dynamicScreenSpaceError*` en `src/world.ts`). No se usa un recorte de distancia de cámara porque también corta el cielo.
 
 ## Estructura
 
 ```
 src/world.ts    visor Cesium, modo de teselas y geocodificación
-src/flight.ts   física de vuelo y cámaras
+src/flight.ts   control del ovni y cámaras
 src/pois.ts     carga de lugares, globos y distancias
 src/main.ts     HUD, fichas, controles y bucle principal
-src/sound.ts    sonido de motor y de descubrimiento sintetizados
+src/sound.ts    zumbido del ovni y sonido de descubrimiento sintetizados
 ```

@@ -15,7 +15,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .cesium-viewer-bottom { opacity: .75; }
 
 /* Paneles tipo "píldora" blancos */
-#nearest, #speed, #card { background: var(--panel); border-radius: 999px; box-shadow: var(--shadow); }
+#nearest, #card { background: var(--panel); border-radius: 999px; box-shadow: var(--shadow); }
 
 #topbar { position: fixed; top: 14px; left: 14px; right: 14px; display: flex; justify-content: space-between; gap: 8px; z-index: 5; pointer-events: none; background: none; box-shadow: none; }
 #topbar button { pointer-events: auto; background: var(--panel); border: 0; border-radius: 999px; box-shadow: var(--shadow); padding: 8px 18px; font-weight: 800; display: flex; align-items: baseline; gap: 6px; max-width: 60vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -47,9 +47,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #nearest { position: fixed; top: 74px; right: 14px; display: flex; gap: 8px; align-items: center; padding: 8px 16px 8px 10px; z-index: 4; font-weight: 800; }
 #nearest-arrow { fill: var(--orange); transition: transform .25s; }
 
-#speed { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); display: flex; gap: 10px; align-items: center; padding: 8px 16px; z-index: 4; }
-#speed .bar { width: 160px; height: 10px; border-radius: 5px; background: #dde7f1; overflow: hidden; }
-#speed i { display: block; height: 100%; background: linear-gradient(90deg, var(--sky), var(--orange)); border-radius: 5px; transition: width .2s; }
 
 #banner { position: fixed; left: 50%; top: 22%; max-width: 44vw; transform: translateX(-50%); z-index: 7; text-align: center; font-weight: 900; font-size: 44px; color: #fff;
   text-shadow: 0 3px 0 rgba(0,0,0,.25), 0 0 24px rgba(0,60,120,.45); animation: pop .5s cubic-bezier(.2,1.6,.4,1); pointer-events: none; line-height: 1.1; }
@@ -71,7 +68,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 #loading { position: fixed; inset: 0; z-index: 11; display: grid; place-items: center; background: linear-gradient(180deg, #29a8ff, #8fd3ff); padding: 16px; }
 .loading-box { width: min(420px, 100%); background: var(--panel); border-radius: 32px; box-shadow: var(--shadow); padding: 28px; text-align: center; }
-.loading-plane { font-size: 44px; animation: bob 1.6s ease-in-out infinite; }
+.loading-ufo { font-size: 44px; animation: bob 1.6s ease-in-out infinite; }
 @keyframes bob { 50% { transform: translate(10px, -8px) rotate(-8deg); } }
 .loading-box h2 { margin: 6px 0 16px; font-weight: 900; }
 #loading-steps { list-style: none; padding: 0; margin: 0 0 18px; text-align: left; display: flex; flex-direction: column; gap: 8px; font-weight: 700; }
@@ -93,12 +90,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
   #stick i { position: absolute; left: 32px; top: 32px; width: 50px; height: 50px; border-radius: 50%; background: #fff; box-shadow: var(--shadow); }
   .touch-buttons { position: fixed; right: 16px; bottom: 30px; display: flex; flex-direction: column; gap: 10px; z-index: 5; }
   .touch-buttons button { width: 58px; height: 58px; border-radius: 50%; border: 0; background: var(--panel); box-shadow: var(--shadow); font-size: 24px; touch-action: none; }
-  #speed { bottom: auto; top: 140px; }
 }
 
 #intro { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: linear-gradient(180deg, rgba(41,168,255,.55), rgba(143,211,255,.35)); padding: 16px; }
 .intro-box { position: relative; width: min(520px, 100%); padding: 32px 28px; text-align: center; background: var(--panel); border-radius: 32px; box-shadow: var(--shadow); }
-.logo { font-size: 56px; line-height: 1; transform: rotate(-12deg); }
+.logo { font-size: 56px; line-height: 1; animation: bob 2s ease-in-out infinite; }
 .intro-box h1 { font-size: 52px; font-weight: 900; margin: 4px 0 8px; color: var(--sky-dark); }
 .intro-box p { line-height: 1.5; }
 .keys { display: flex; flex-wrap: wrap; gap: 8px 16px; justify-content: center; margin: 20px 0 24px; font-size: 14px; font-weight: 600; }
@@ -123,4 +119,4 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; margin-right: 2p
 }
 
 /* El HUD solo se muestra durante el vuelo */
-body:not(.flying) #topbar, body:not(.flying) #speed, body:not(.flying) #nearest { visibility: hidden; }
+body:not(.flying) #topbar, body:not(.flying) #nearest { visibility: hidden; }

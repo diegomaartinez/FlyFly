@@ -1,82 +1,76 @@
 import { Cartesian3, HeadingPitchRange, HeadingPitchRoll, Math as CMath, Matrix4, Model, Transforms, Viewer } from 'cesium';
 
 const R = 6378137;
-const G = 9.81;
-// Como en el vuelo turístico de Wii Sports Resort: velocidad de crucero, acelerón y freno mientras se mantienen.
-const CRUISE = 45; // m/s
-const BOOST = 95;
-const SLOW = 22;
-const MIN_CLEARANCE = 20; // metros sobre suelo/edificios
-const START_ALTITUDE = 300; // metros sobre la ciudad al llegar
+const MAX_SPEED = 55; // m/s en horizontal
+const MAX_LIFT = 25; // m/s en vertical
+const TURN_RATE = 1.4; // rad/s
+const RESPONSE = 2.2; // cuanto mayor, antes alcanza la velocidad deseada (y antes se detiene)
+const MIN_CLEARANCE = 15; // metros sobre suelo/edificios
+const MAX_ALTITUDE = 1500; // metros sobre el suelo
+const START_ALTITUDE = 250;
 
-export interface Controls { pitch: number; roll: number; yaw: number; throttle: number }
-export type CameraMode = 'chase' | 'cockpit';
+/** Mandos normalizados entre -1 y 1. */
+export interface Controls { forward: number; strafe: number; turn: number; lift: number }
+export type CameraMode = 'chase' | 'drone';
 
-export class Plane {
-  lat = 0; lng = 0; height = 600; // grados, metros
-  heading = 0; pitch = 0; roll = 0; // radianes (heading 0 = norte, horario)
-  speed = CRUISE;
-  /** 0 = freno, 0.5 = crucero, 1 = acelerón (para el HUD y el sonido). */
-  throttle = 0.5;
+/** Ovni que se mueve como un dron: flota en el sitio, avanza, se desplaza de lado, sube y baja. */
+export class Craft {
+  lat = 0; lng = 0; height = 0; // grados, metros
+  heading = 0; // radianes, 0 = norte, sentido horario
   ground = 0;
   cameraMode: CameraMode = 'chase';
+  private vel = { e: 0, n: 0, u: 0 }; // m/s
   private camHeading = 0;
+  private time = 0;
   private model?: Model;
 
   constructor(private viewer: Viewer) {}
 
   async load(url: string) {
-    this.model = await Model.fromGltfAsync({ url, scale: 2.2 });
+    this.model = await Model.fromGltfAsync({ url, scale: 2 });
     this.viewer.scene.primitives.add(this.model);
   }
 
-  teleport(lat: number, lng: number, headingDeg: number, ground = 0) {
-    const h = CMath.toRadians(headingDeg);
-    // Aparece 3 km antes del centro para llegar volando hacia él.
-    this.lat = lat - (3000 * Math.cos(h)) / R * CMath.DEGREES_PER_RADIAN;
-    this.lng = lng - (3000 * Math.sin(h)) / (R * Math.cos(CMath.toRadians(lat))) * CMath.DEGREES_PER_RADIAN;
+  teleport(lat: number, lng: number, ground = 0) {
+    this.lat = lat;
+    this.lng = lng;
     this.ground = ground;
     this.height = ground + START_ALTITUDE;
-    this.heading = this.camHeading = h;
-    this.pitch = this.roll = 0;
-    this.speed = CRUISE;
+    this.vel = { e: 0, n: 0, u: 0 };
   }
 
   get position() {
     return Cartesian3.fromDegrees(this.lng, this.lat, this.height);
   }
 
-  update(dt: number, c: Controls) {
-    const target = c.throttle > 0 ? BOOST : c.throttle < 0 ? SLOW : CRUISE;
-    this.speed += (target - this.speed) * Math.min(1, 1.5 * dt);
-    this.throttle = (this.speed - SLOW) / (BOOST - SLOW);
-
-    // Alabeo y cabeceo con retorno suave a nivel cuando se sueltan los mandos.
-    this.roll += c.roll * 1.3 * dt;
-    if (!c.roll) this.roll -= this.roll * 1.2 * dt;
-    this.roll = CMath.clamp(this.roll, -1.1, 1.1);
-    this.pitch += c.pitch * 0.7 * dt;
-    if (!c.pitch) this.pitch -= this.pitch * 0.4 * dt;
-    this.pitch = CMath.clamp(this.pitch, -0.6, 0.6);
-
-    // Viraje coordinado: la inclinación de alas produce el giro.
-    this.heading += ((G * Math.tan(this.roll)) / this.speed + c.yaw * 0.25) * dt;
-    this.heading = CMath.zeroToTwoPi(this.heading);
-
-    const horiz = this.speed * Math.cos(this.pitch) * dt;
-    this.lat += ((horiz * Math.cos(this.heading)) / R) * CMath.DEGREES_PER_RADIAN;
-    this.lng += ((horiz * Math.sin(this.heading)) / (R * Math.cos(CMath.toRadians(this.lat)))) * CMath.DEGREES_PER_RADIAN;
-    this.height += this.speed * Math.sin(this.pitch) * dt;
-
-    const floor = this.ground + MIN_CLEARANCE;
-    if (this.height < floor) {
-      this.height = floor;
-      this.pitch = Math.max(this.pitch, 0.08);
-    }
-    this.height = Math.min(this.height, 6000);
+  get speed() {
+    return Math.hypot(this.vel.e, this.vel.n, this.vel.u);
   }
 
-  /** Muestrea la altura del terreno/edificios bajo el avión (llamar unas pocas veces por segundo). */
+  update(dt: number, c: Controls) {
+    this.time += dt;
+    this.heading = CMath.zeroToTwoPi(this.heading + c.turn * TURN_RATE * dt);
+
+    // Velocidad deseada en coordenadas locales (este, norte, arriba) según el rumbo.
+    const sin = Math.sin(this.heading), cos = Math.cos(this.heading);
+    const fwd = c.forward * MAX_SPEED, side = c.strafe * MAX_SPEED;
+    const target = { e: fwd * sin + side * cos, n: fwd * cos - side * sin, u: c.lift * MAX_LIFT };
+    const k = Math.min(1, RESPONSE * dt);
+    this.vel.e += (target.e - this.vel.e) * k;
+    this.vel.n += (target.n - this.vel.n) * k;
+    this.vel.u += (target.u - this.vel.u) * k;
+
+    this.lat += ((this.vel.n * dt) / R) * CMath.DEGREES_PER_RADIAN;
+    this.lng += ((this.vel.e * dt) / (R * Math.cos(CMath.toRadians(this.lat)))) * CMath.DEGREES_PER_RADIAN;
+    this.height += this.vel.u * dt;
+
+    const floor = this.ground + MIN_CLEARANCE;
+    if (this.height < floor) { this.height = floor; this.vel.u = Math.max(0, this.vel.u); }
+    const ceiling = this.ground + MAX_ALTITUDE;
+    if (this.height > ceiling) { this.height = ceiling; this.vel.u = Math.min(0, this.vel.u); }
+  }
+
+  /** Muestrea la altura del terreno/edificios bajo el ovni (llamar unas pocas veces por segundo). */
   sampleGround() {
     const scene = this.viewer.scene;
     const carto = scene.globe.ellipsoid.cartesianToCartographic(this.position);
@@ -88,29 +82,32 @@ export class Plane {
 
   render(dt: number) {
     const pos = this.position;
-    const hpr = new HeadingPitchRoll(this.heading - CMath.PI_OVER_TWO, this.pitch, this.roll);
     if (this.model) {
-      Transforms.headingPitchRollToFixedFrame(pos, hpr, undefined, undefined, this.model.modelMatrix);
+      // Se inclina hacia donde se mueve y se balancea un poco al flotar.
+      const sin = Math.sin(this.heading), cos = Math.cos(this.heading);
+      const fwd = (this.vel.e * sin + this.vel.n * cos) / MAX_SPEED;
+      const side = (this.vel.e * cos - this.vel.n * sin) / MAX_SPEED;
+      const bob = Math.sin(this.time * 2) * 0.6;
+      const hpr = new HeadingPitchRoll(this.heading - CMath.PI_OVER_TWO, -fwd * 0.3, side * 0.3);
+      const at = Cartesian3.fromDegrees(this.lng, this.lat, this.height + bob);
+      Transforms.headingPitchRollToFixedFrame(at, hpr, undefined, undefined, this.model.modelMatrix);
       this.model.show = this.cameraMode === 'chase';
     }
 
     const camera = this.viewer.camera;
+    const diff = CMath.negativePiToPi(this.heading - this.camHeading);
+    this.camHeading += diff * Math.min(1, 4 * dt);
     if (this.cameraMode === 'chase') {
-      // La cámara sigue el rumbo con algo de retardo, como una cámara de persecución.
-      const diff = CMath.negativePiToPi(this.heading - this.camHeading);
-      this.camHeading += diff * Math.min(1, 2.5 * dt);
-      camera.lookAt(pos, new HeadingPitchRange(this.camHeading, -0.2 - this.pitch * 0.3, 32));
+      camera.lookAt(pos, new HeadingPitchRange(this.camHeading, -0.22, 45));
     } else {
+      // Cámara de dron: desde el propio ovni, mirando hacia delante y abajo.
       camera.lookAtTransform(Matrix4.IDENTITY);
-      camera.setView({
-        destination: pos,
-        orientation: { heading: this.heading, pitch: this.pitch - 0.08, roll: this.roll },
-      });
+      camera.setView({ destination: pos, orientation: { heading: this.camHeading, pitch: -0.5, roll: 0 } });
     }
   }
 
   toggleCamera() {
-    this.cameraMode = this.cameraMode === 'chase' ? 'cockpit' : 'chase';
+    this.cameraMode = this.cameraMode === 'chase' ? 'drone' : 'chase';
     this.viewer.camera.lookAtTransform(Matrix4.IDENTITY);
   }
 }
