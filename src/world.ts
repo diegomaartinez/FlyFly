@@ -1,6 +1,6 @@
 import {
   Cartesian3, Cartographic, Cesium3DTileset, createGooglePhotorealistic3DTileset, GeocoderService, GoogleGeocoderService, ImageryLayer, Ion,
-  IonGeocoderService, IonGeocodeProviderType, JulianDate, Rectangle, UrlTemplateImageryProvider, Viewer, WebMercatorTilingScheme,
+  IonGeocoderService, IonGeocodeProviderType, JulianDate, Rectangle, RequestScheduler, UrlTemplateImageryProvider, Viewer, WebMercatorTilingScheme,
 } from 'cesium';
 
 export type WorldMode = 'google' | 'ion' | 'free';
@@ -16,7 +16,39 @@ export interface World {
 const env = import.meta.env;
 const googleKey: string | undefined = env.VITE_GOOGLE_MAPS_API_KEY || undefined;
 const ionToken: string | undefined = env.VITE_CESIUM_ION_TOKEN || undefined;
-const tileDetail = Number(env.VITE_TILE_DETAIL) || 16;
+
+/** Calidad del mapa: nivel de detalle de las teselas, resolución de render y antialiasing. */
+export type Quality = 'alta' | 'equilibrada' | 'rapida';
+const QUALITY: Record<Quality, { sse: number; nativeResolution: boolean; msaa: number }> = {
+  alta: { sse: 8, nativeResolution: true, msaa: 4 },
+  equilibrada: { sse: 16, nativeResolution: false, msaa: 2 },
+  rapida: { sse: 28, nativeResolution: false, msaa: 1 },
+};
+const QUALITY_KEY = 'flyfly:quality';
+
+/** Calidad guardada o, si no hay, una adecuada al dispositivo (móviles y equipos modestos: rápida). */
+export function initialQuality(): Quality {
+  try {
+    const saved = localStorage.getItem(QUALITY_KEY) as Quality | null;
+    if (saved && saved in QUALITY) return saved;
+  } catch { /* sin almacenamiento */ }
+  const modest = matchMedia('(pointer: coarse)').matches || (navigator.hardwareConcurrency ?? 8) <= 4;
+  return modest ? 'rapida' : 'equilibrada';
+}
+
+export function setQuality(world: World, quality: Quality) {
+  const q = QUALITY[quality];
+  const { viewer, tileset } = world;
+  if (tileset) tileset.maximumScreenSpaceError = q.sse;
+  viewer.useBrowserRecommendedResolution = !q.nativeResolution;
+  viewer.scene.msaaSamples = q.msaa;
+  try { localStorage.setItem(QUALITY_KEY, quality); } catch { /* sin almacenamiento */ }
+}
+
+// Los servidores de teselas usan HTTP/2: admiten muchas más descargas simultáneas que las 18 por defecto.
+for (const host of ['tile.googleapis.com:443', 'assets.ion.cesium.com:443', 'api.cesium.com:443']) {
+  RequestScheduler.requestsByServer[host] = 36;
+}
 
 const wanted: WorldMode = googleKey ? 'google' : ionToken ? 'ion' : 'free';
 
@@ -26,7 +58,7 @@ const sentinel = () =>
     url: 'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless_3857/default/g/{z}/{y}/{x}.jpg',
     tilingScheme: new WebMercatorTilingScheme(),
     maximumLevel: 15,
-    credit: 'Sentinel-2 cloudless – s2maps.eu by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2016)',
+    credit: 'Sentinel-2 cloudless - s2maps.eu by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2016)',
   });
 
 // PNOA máxima actualidad (IGN, CC BY 4.0): ortofoto de España hasta 15-25 cm/píxel.
@@ -70,7 +102,9 @@ export async function createWorld(container: HTMLElement): Promise<World> {
     const tileset = await createGooglePhotorealistic3DTileset(
       { key: googleKey, onlyUsingWithGoogleGeocoder: true },
       {
-        maximumScreenSpaceError: tileDetail,
+        maximumScreenSpaceError: QUALITY[initialQuality()].sse,
+        // Primero una capa rápida de baja resolución de toda la vista; luego se afina.
+        progressiveResolutionHeightFraction: 0.5,
         // Reduce mucho el detalle de lo que queda cerca del horizonte.
         dynamicScreenSpaceErrorDensity: 2.0e-3,
         dynamicScreenSpaceErrorFactor: 48,

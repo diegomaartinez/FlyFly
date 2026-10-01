@@ -2,97 +2,178 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>FlyFly · Sobrevuela tu ciudad</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800;900&display=swap" rel="stylesheet" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#123a5c" />
+  <meta name="description" content="Sobrevuela cualquier ciudad del mundo en 3D con un ovni y descubre sus lugares más interesantes." />
+  <title>FlyFly · Sobrevuela cualquier ciudad</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
 </head>
 <body>
   <div id="world"></div>
+  <div id="markers"></div>
 
-  <header id="topbar">
-    <button id="city-btn" title="Cambiar de ciudad">📍 <span id="city-name">—</span></button>
-    <button id="menu-btn" title="Lugares"><span class="balloon-icon">🎈</span><b id="visited">0</b><small>/ <span id="total">0</span></small></button>
+  <!-- Barra superior -->
+  <header class="hud-top">
+    <button id="city-btn" class="chip chip-city" aria-label="Cambiar de ciudad">
+      <span class="brand-mark" data-icon="ufo"></span>
+      <span class="chip-stack"><small>Sobrevolando</small><b id="city-name">-</b></span>
+      <span class="chip-trailing" data-icon="search"></span>
+    </button>
+    <div class="hud-actions">
+      <button id="menu-btn" class="chip chip-progress" aria-label="Ver lugares descubiertos">
+        <span data-icon="target"></span><b id="visited">0</b><span class="muted">de <span id="total">0</span></span>
+      </button>
+      <button id="help-btn" class="icon-btn" aria-label="Controles"><span data-icon="keyboard"></span></button>
+      <button id="settings-btn" class="icon-btn" aria-label="Ajustes"><span data-icon="gear"></span></button>
+    </div>
   </header>
 
-  <aside id="menu" hidden>
-    <div class="menu-head">
-      <h2>Lugares de <span id="menu-city"></span></h2>
-      <button id="menu-close" aria-label="Cerrar">×</button>
+  <div id="compass" class="chip chip-compass" hidden>
+    <span id="compass-arrow" class="compass-arrow" data-icon="nav"></span>
+    <span class="chip-stack"><b id="compass-dist">-</b><small>Lugar oculto más cercano</small></span>
+  </div>
+
+  <div id="altitude" class="chip chip-altitude" title="Altitud sobre el nivel del mar">
+    <span data-icon="altitude"></span><b id="altitude-value">0 m</b><small>sobre el mar</small>
+  </div>
+
+  <div id="area-title" class="area-title" hidden>
+    <h2 id="area-name"></h2>
+    <p id="area-sub"></p>
+  </div>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+
+  <!-- Ficha del lugar -->
+  <aside id="sheet" class="sheet" aria-labelledby="sheet-title" hidden>
+    <div class="sheet-media">
+      <img id="sheet-img" alt="" />
+      <button id="sheet-close" class="icon-btn icon-btn-float" aria-label="Cerrar ficha"><span data-icon="close"></span></button>
     </div>
-    <div class="progress"><i id="menu-progress"></i></div>
-    <p class="menu-summary" id="menu-summary"></p>
-    <h3>🧭 Pistas</h3>
-    <ul id="menu-hints"></ul>
-    <h3>✓ Descubiertos</h3>
-    <ul id="menu-list"></ul>
-    <p id="menu-empty" class="note">Aún no has descubierto ningún lugar. ¡Busca los globos naranjas!</p>
-  </aside>
-
-  <section id="nearest" hidden>
-    <svg id="nearest-arrow" viewBox="0 0 24 24" width="30" height="30"><path d="M12 2 L20 20 L12 15 L4 20 Z" /></svg>
-    <span id="nearest-dist"></span>
-  </section>
-
-  <div id="altitude-box" title="Altura sobre el suelo">↕ <span id="altitude">0 m</span></div>
-
-  <div id="banner" hidden></div>
-
-  <aside id="card" hidden>
-    <button id="card-close" aria-label="Cerrar">×</button>
-    <img id="card-img" alt="" />
-    <div class="card-body">
-      <span id="card-sponsor" hidden></span>
-      <h2 id="card-title"></h2>
-      <p id="card-text"></p>
-      <div class="card-actions">
-        <a id="card-cta" class="btn" target="_blank" rel="noopener" hidden></a>
-        <a id="card-link" target="_blank" rel="noopener">Leer más →</a>
+    <div class="sheet-body">
+      <div class="sheet-meta"><span id="sheet-status" class="tag"></span><span id="sheet-dist" class="muted"></span></div>
+      <h2 id="sheet-title"></h2>
+      <p id="sheet-desc" class="sheet-desc"></p>
+      <p id="sheet-text" class="sheet-text"></p>
+      <div class="sheet-actions">
+        <a id="sheet-cta" class="btn btn-primary" target="_blank" rel="noopener sponsored" hidden></a>
+        <a id="sheet-link" class="btn btn-secondary" target="_blank" rel="noopener">Leer en Wikipedia <span data-icon="external"></span></a>
       </div>
+      <p id="sheet-credit" class="credit"></p>
     </div>
   </aside>
 
-  <div id="loading" hidden>
-    <div class="loading-box">
-      <div class="loading-ufo">🛸</div>
-      <h2>Volando a <span id="loading-city"></span></h2>
-      <ol id="loading-steps">
-        <li data-step="city">Localizando la ciudad</li>
-        <li data-step="places">Buscando lugares de interés</li>
-        <li data-step="tiles">Cargando la ciudad <span id="tiles-progress"></span></li>
-      </ol>
-      <div class="progress"><i id="loading-progress"></i></div>
+  <!-- Lugares de la ciudad -->
+  <aside id="drawer" class="drawer" aria-labelledby="drawer-title" hidden>
+    <div class="drawer-head">
+      <h2 id="drawer-title">Lugares de <span id="drawer-city"></span></h2>
+      <button id="drawer-close" class="icon-btn" aria-label="Cerrar"><span data-icon="close"></span></button>
+    </div>
+    <div class="drawer-progress">
+      <p><b id="drawer-found">0</b> de <span id="drawer-total">0</span> descubiertos</p>
+      <div class="progress"><i id="drawer-bar"></i></div>
+    </div>
+    <section id="drawer-hints-section">
+      <h3>Más cerca de ti</h3>
+      <ul id="drawer-hints" class="hint-list"></ul>
+    </section>
+    <section>
+      <h3>Descubiertos</h3>
+      <div id="drawer-grid" class="place-grid"></div>
+      <p id="drawer-empty" class="empty">Todavía no has descubierto ningún lugar. Sigue la flecha y los haces de luz naranjas.</p>
+    </section>
+  </aside>
+
+  <!-- Ajustes -->
+  <div id="settings" class="popover" hidden>
+    <h3>Calidad del mapa</h3>
+    <div class="segmented" role="radiogroup" aria-label="Calidad del mapa">
+      <button type="button" role="radio" data-quality="rapida">Rápida</button>
+      <button type="button" role="radio" data-quality="equilibrada">Equilibrada</button>
+      <button type="button" role="radio" data-quality="alta">Alta</button>
+    </div>
+    <p class="help">Rápida carga antes y gasta menos batería. Alta muestra más detalle pero necesita un buen equipo.</p>
+    <div class="popover-actions">
+      <button id="reset-progress" class="row-btn" type="button"><span data-icon="reset"></span>Reiniciar progreso de esta ciudad</button>
+      <button id="about-btn" class="row-btn" type="button"><span data-icon="info"></span>Créditos y fuentes de datos</button>
     </div>
   </div>
 
+  <!-- Controles -->
+  <div id="help" class="popover popover-help" hidden>
+    <h3>Controles</h3>
+    <dl class="controls">
+      <dt><kbd>W</kbd><kbd>S</kbd> o <kbd>↑</kbd><kbd>↓</kbd></dt><dd>Avanzar y retroceder</dd>
+      <dt><kbd>←</kbd><kbd>→</kbd></dt><dd>Girar</dd>
+      <dt><kbd>A</kbd><kbd>D</kbd></dt><dd>Desplazarse de lado</dd>
+      <dt><kbd>Espacio</kbd><kbd>Shift</kbd></dt><dd>Subir y bajar</dd>
+      <dt>Arrastrar</dt><dd>Girar la cámara</dd>
+      <dt>Rueda</dt><dd>Acercar o alejar</dd>
+      <dt><kbd>C</kbd></dt><dd>Vista exterior o de dron</dd>
+      <dt><kbd>Tab</kbd></dt><dd>Lugares descubiertos</dd>
+    </dl>
+  </div>
+
+  <dialog id="about" class="modal" aria-labelledby="about-title">
+    <div class="modal-head">
+      <h2 id="about-title">Créditos y fuentes de datos</h2>
+      <button id="about-close" class="icon-btn" aria-label="Cerrar"><span data-icon="close"></span></button>
+    </div>
+    <ul class="credits">
+      <li><b>Ciudades en 3D</b>Google Photorealistic 3D Tiles, servidas con CesiumJS y Cesium ion.</li>
+      <li><b>Lugares y textos</b>Wikipedia, con licencia CC BY-SA 4.0. Cada ficha enlaza a su artículo.</li>
+      <li><b>Fotografías</b>Wikimedia Commons. El autor y la licencia de cada foto aparecen en su ficha.</li>
+      <li><b>Búsqueda de lugares</b>Google (modo 3D) u OpenStreetMap Nominatim, © colaboradores de OpenStreetMap (ODbL).</li>
+      <li><b>Ortofotos</b>PNOA cedido por © Instituto Geográfico Nacional y Sentinel-2 cloudless de EOX (CC BY 4.0).</li>
+      <li><b>Altitud</b>Modelo de geoide EGM96 (NGA).</li>
+      <li><b>Iconos y tipografía</b>Phosphor Icons (MIT) y Outfit (SIL Open Font License).</li>
+    </ul>
+  </dialog>
+
+  <!-- Controles táctiles -->
   <div id="touch">
-    <div id="stick"><i></i></div>
+    <div id="stick" aria-label="Joystick: avanzar y girar"><i></i></div>
     <div class="touch-buttons">
-      <button data-lift="1">⬆</button>
-      <button data-lift="-1">⬇</button>
-      <button id="cam-btn">🎥</button>
+      <button data-lift="1" aria-label="Subir"><span data-icon="arrowUp"></span></button>
+      <button data-lift="-1" aria-label="Bajar"><span data-icon="arrowDown"></span></button>
+      <button id="cam-btn" aria-label="Cambiar cámara"><span data-icon="camera"></span></button>
     </div>
   </div>
 
-  <div id="intro">
-    <div class="intro-box">
-      <button id="intro-close" aria-label="Cerrar" hidden>×</button>
-      <div class="logo">🛸</div>
-      <h1>FlyFly</h1>
-      <p>Sobrevuela cualquier ciudad con tu ovni y encuentra los <b>globos escondidos</b>.<br />Cada uno guarda un lugar que merece la pena descubrir.</p>
-      <form id="search">
-        <input id="search-input" placeholder="¿Dónde quieres volar?" autocomplete="off" disabled />
-        <button id="search-btn" disabled>Buscar</button>
+  <!-- Pantalla de carga -->
+  <div id="loading" class="screen screen-loading" hidden>
+    <div class="loading-card">
+      <span class="brand-mark brand-mark-lg" data-icon="ufo"></span>
+      <h2>Volando a <span id="loading-city"></span></h2>
+      <div class="progress"><i id="loading-progress"></i></div>
+      <ol id="loading-steps">
+        <li data-step="city"><span class="step-icon"></span>Localizando la ciudad</li>
+        <li data-step="places"><span class="step-icon"></span>Buscando lugares de interés</li>
+        <li data-step="tiles"><span class="step-icon"></span>Cargando edificios y terreno <span id="tiles-progress" class="muted"></span></li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- Inicio -->
+  <div id="intro" class="screen screen-intro">
+    <div class="intro-panel">
+      <button id="intro-close" class="icon-btn intro-close" aria-label="Volver al vuelo" hidden><span data-icon="close"></span></button>
+      <div class="brand"><span class="brand-mark" data-icon="ufo"></span>FlyFly</div>
+      <h1>Sobrevuela cualquier ciudad del mundo</h1>
+      <p class="lead">Pilota un ovni sobre ciudades reales en 3D y encuentra los lugares escondidos.</p>
+      <form id="search" class="search" autocomplete="off">
+        <label for="search-input">¿A dónde vamos?</label>
+        <div class="search-row">
+          <span class="search-icon" data-icon="search"></span>
+          <input id="search-input" type="search" placeholder="Ciudad, pueblo o lugar" enterkeyhint="search" disabled />
+          <button id="search-btn" class="btn btn-primary" disabled>Despegar</button>
+        </div>
+        <p id="search-status" class="field-help" role="status">Preparando el mundo…</p>
       </form>
-      <ul id="results"></ul>
-      <p id="search-status" class="note">Preparando el mundo…</p>
-      <div class="keys">
-        <span><kbd>↑</kbd><kbd>↓</kbd> avanzar / retroceder</span>
-        <span><kbd>←</kbd><kbd>→</kbd> girar</span>
-        <span><kbd>A</kbd><kbd>D</kbd> desplazarse de lado</span>
-        <span><kbd>Espacio</kbd> subir · <kbd>Shift</kbd> bajar</span>
-        <span>🖱️ arrastra para girar la cámara · rueda para acercar</span>
-        <span><kbd>C</kbd> cámara · <kbd>Tab</kbd> lugares</span>
+      <ul id="results" class="results"></ul>
+      <div id="recent" class="recent" hidden>
+        <h3>Recientes</h3>
+        <div id="recent-list" class="recent-list"></div>
       </div>
       <p id="mode-note" class="note"></p>
     </div>

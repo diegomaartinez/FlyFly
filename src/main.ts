@@ -1,99 +1,203 @@
 import 'cesium/Build/Cesium/Widgets/widgets.css';
+import '@fontsource-variable/outfit';
 import './style.css';
 import { Controls, Craft } from './flight';
-import { bearing, distance, fetchSummary, loadCityPois, Poi, PoiLayer } from './pois';
-import { createWorld, geocode, GeoResult, groundHeight, World } from './world';
+import { geoidHeight, loadGeoid } from './geoid';
+import { hydrateIcons, icon, IconName } from './icons';
+import { bearing, distance, fetchImageCredit, fetchSummary, formatDistance, loadCityPois, Poi, PoiLayer, wikiUrl } from './pois';
+import { createWorld, geocode, GeoResult, groundHeight, initialQuality, Quality, setQuality, World } from './world';
 // Sonido desactivado (para reactivarlo, descomenta las líneas marcadas con "Sonido").
 // import { EngineSound } from './sound'; // Sonido
-import { defined, ScreenSpaceEventHandler, ScreenSpaceEventType } from 'cesium';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
+hydrateIcons();
 
-const world = await createWorld($('world'));
+const [world] = await Promise.all([createWorld($('world')), loadGeoid()]);
 const { viewer } = world;
 const ufo = new Craft(viewer);
-const pois = new PoiLayer(viewer);
+const pois = new PoiLayer(viewer, $('markers'));
 // const sound = new EngineSound(); // Sonido
 await ufo.load('models/ufo.glb');
+let quality: Quality = initialQuality();
+setQuality(world, quality);
 
 $('mode-note').textContent = world.error
-  ? `No se pudo cargar la ciudad en 3D (${world.error}). Revisa el token de Cesium ion. Mostrando ortofoto plana.`
+  ? `No se pudo cargar la ciudad en 3D (${world.error}). Revisa el token de Cesium ion. Se muestra la ortofoto plana.`
   : world.mode === 'free'
-    ? 'Modo plano (ortofoto). Añade un token de Cesium ion para ver la ciudad en 3D.'
+    ? 'Modo plano (ortofoto). Añade un token de Cesium ion para ver las ciudades en 3D.'
     : '';
 
-// ---------- Búsqueda de ciudad ----------
 let flying = false;
 let paused = true;
-const LAST_CITY_KEY = 'flyfly:lastCity';
+const timeout = <T>(ms: number, value: T) => new Promise<T>((r) => setTimeout(() => r(value), ms));
 
+// ---------- Avisos ----------
+let toastTimer = 0;
+function toast(opts: { title: string; label?: string; image?: string; iconName?: IconName }) {
+  const t = $('toast');
+  t.innerHTML = '';
+  t.className = opts.label ? 'toast' : 'toast is-info';
+  if (opts.image) {
+    const img = document.createElement('img');
+    img.src = opts.image;
+    img.alt = '';
+    t.append(img);
+  } else if (opts.iconName) {
+    const i = document.createElement('span');
+    i.className = 'toast-icon';
+    i.innerHTML = icon(opts.iconName);
+    t.append(i);
+  }
+  const text = document.createElement('div');
+  if (opts.label) {
+    const small = document.createElement('small');
+    small.textContent = opts.label;
+    text.append(small);
+  }
+  const b = document.createElement('b');
+  b.textContent = opts.title;
+  text.append(b);
+  t.append(text);
+  t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => (t.hidden = true), 3200);
+}
+
+let areaTimer = 0;
+function showAreaTitle(name: string, sub: string) {
+  const el = $('area-title');
+  $('area-name').textContent = name;
+  $('area-sub').textContent = sub;
+  el.hidden = true;
+  void el.offsetWidth; // reinicia la animación
+  el.hidden = false;
+  clearTimeout(areaTimer);
+  areaTimer = window.setTimeout(() => (el.hidden = true), 3300);
+}
+
+// ---------- Búsqueda de ciudad ----------
 const searchInput = $<HTMLInputElement>('search-input');
-searchInput.disabled = $<HTMLButtonElement>('search-btn').disabled = false;
-$('search-status').textContent = '';
-try { searchInput.value = localStorage.getItem(LAST_CITY_KEY) ?? ''; } catch { /* sin almacenamiento */ }
+const searchBtn = $<HTMLButtonElement>('search-btn');
+const RECENT_KEY = 'flyfly:recent';
+
+function setStatus(text: string, error = false) {
+  const s = $('search-status');
+  s.textContent = text;
+  s.classList.toggle('is-error', error);
+}
+
+function loadRecent(): GeoResult[] {
+  try {
+    return JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]');
+  } catch {
+    return [];
+  }
+}
+
+function saveRecent(place: GeoResult) {
+  const list = [place, ...loadRecent().filter((p) => p.name !== place.name || p.detail !== place.detail)].slice(0, 4);
+  try { localStorage.setItem(RECENT_KEY, JSON.stringify(list)); } catch { /* sin almacenamiento */ }
+}
+
+function renderRecent() {
+  const list = loadRecent();
+  const box = $('recent-list');
+  box.innerHTML = '';
+  $('recent').hidden = !list.length;
+  for (const place of list) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.innerHTML = `${icon('recent')}<span></span>`;
+    b.querySelector('span')!.textContent = place.name;
+    b.title = place.detail;
+    b.onclick = () => startFlight(place);
+    box.append(b);
+  }
+}
+
+searchInput.disabled = searchBtn.disabled = false;
+setStatus('');
+renderRecent();
 searchInput.focus();
 
 function openSearch() {
-  $('intro').hidden = false;
-  $('intro-close').hidden = !flying;
-  $('results').innerHTML = '';
+  closePanels();
   paused = true;
+  $('results').innerHTML = '';
+  setStatus('');
+  renderRecent();
+  $('intro-close').hidden = !flying;
+  $('intro').hidden = false;
   searchInput.select();
   searchInput.focus();
 }
 $('city-btn').onclick = openSearch;
-$('intro-close').onclick = () => { $('intro').hidden = true; paused = false; };
+$('intro-close').onclick = () => {
+  $('intro').hidden = true;
+  paused = false;
+};
 
 $('search').addEventListener('submit', async (e) => {
   e.preventDefault();
   const query = searchInput.value.trim();
-  if (!query) return;
-  const status = $('search-status');
   const list = $('results');
   list.innerHTML = '';
-  status.textContent = 'Buscando…';
+  if (!query) {
+    setStatus('Escribe el nombre de una ciudad o lugar.', true);
+    searchInput.focus();
+    return;
+  }
+  setStatus('Buscando…');
+  searchBtn.disabled = true;
   let hits: GeoResult[] = [];
   try {
     hits = await geocode(world, query);
   } catch {
-    status.textContent = 'La búsqueda no está disponible ahora mismo. Inténtalo de nuevo.';
+    setStatus('La búsqueda no está disponible ahora mismo. Inténtalo de nuevo.', true);
     return;
+  } finally {
+    searchBtn.disabled = false;
   }
-  status.textContent = hits.length ? '' : 'No encontré ese lugar. Prueba con otro nombre.';
+  if (!hits.length) return setStatus('No encontré ese lugar. Prueba con otro nombre.', true);
   if (hits.length === 1) return startFlight(hits[0]);
+  setStatus('Hay varios lugares con ese nombre. Elige uno:');
   for (const hit of hits) {
     const li = document.createElement('li');
-    li.innerHTML = `<b></b><small></small>`;
+    li.innerHTML = `<button type="button">${icon('pin')}<span><b></b><small></small></span></button>`;
     li.querySelector('b')!.textContent = hit.name;
     li.querySelector('small')!.textContent = hit.detail;
-    li.onclick = () => startFlight(hit);
+    li.querySelector('button')!.onclick = () => startFlight(hit);
     list.append(li);
   }
 });
 
 async function startFlight(place: GeoResult) {
-  try { localStorage.setItem(LAST_CITY_KEY, place.name); } catch { /* sin almacenamiento */ }
+  saveRecent(place);
   // sound.start(); // Sonido
   $('intro').hidden = true;
+  $('results').innerHTML = '';
+  setStatus('');
   await flyTo(place);
   flying = true;
   paused = false;
   document.body.classList.add('flying');
-  banner(place.name, 'city');
-  if (!pois.pois.size) setTimeout(() => banner('No se encontraron lugares aquí. Prueba con otra ciudad.', 'info'), 2200);
+  const { total } = pois.progress();
+  showAreaTitle(place.name, total ? `${total} lugares escondidos por descubrir` : 'No hay lugares registrados en esta zona');
+  showHelpOnce();
 }
 
 // ---------- Pantalla de carga ----------
 function step(name: string, state: 'active' | 'done' | 'fail') {
   const li = document.querySelector<HTMLElement>(`#loading-steps [data-step="${name}"]`)!;
   li.className = state;
+  li.querySelector('.step-icon')!.innerHTML = icon(state === 'done' ? 'check' : state === 'fail' ? 'warning' : 'loader');
 }
 
 function setProgress(fraction: number) {
   $('loading-progress').style.width = `${Math.round(fraction * 100)}%`;
 }
 
-/** Espera a que carguen las teselas visibles mostrando el avance (máximo 20 s). */
+/** Espera a que carguen las teselas visibles mostrando el avance (máximo 15 s). */
 function loadTiles(w: World): Promise<void> {
   return new Promise((resolve) => {
     let maxPending = 1;
@@ -101,11 +205,11 @@ function loadTiles(w: World): Promise<void> {
       const left = pending + processing;
       maxPending = Math.max(maxPending, left);
       const f = 1 - left / maxPending;
-      setProgress(0.4 + 0.6 * f);
-      $('tiles-progress').textContent = `${Math.round(f * 100)}%`;
+      setProgress(0.35 + 0.65 * f);
+      $('tiles-progress').textContent = `${Math.round(f * 100)} %`;
     };
     const finish = () => { clearTimeout(timer); removeProgress(); removeDone(); resolve(); };
-    const timer = setTimeout(finish, 20000);
+    const timer = setTimeout(finish, 15000);
     const removeProgress = w.tileset
       ? w.tileset.loadProgress.addEventListener(update)
       : w.viewer.scene.globe.tileLoadProgressEvent.addEventListener((n: number) => update(n, 0));
@@ -117,144 +221,255 @@ function loadTiles(w: World): Promise<void> {
 
 async function flyTo(place: GeoResult) {
   paused = true;
-  closeCard();
-  closeMenu();
+  closePanels();
   pois.clear();
-  $('city-name').textContent = $('menu-city').textContent = $('loading-city').textContent = place.name;
-  document.querySelectorAll('#loading-steps li').forEach((li) => (li.className = ''));
+  $('city-name').textContent = $('drawer-city').textContent = $('loading-city').textContent = place.name;
+  document.querySelectorAll<HTMLElement>('#loading-steps li').forEach((li) => {
+    li.className = '';
+    li.querySelector('.step-icon')!.innerHTML = '';
+  });
   $('tiles-progress').textContent = '';
   setProgress(0);
   $('loading').hidden = false;
 
-  // 1. Coloca la cámara sobre la ciudad para que empiecen a cargar sus teselas y mide la altura del suelo.
+  // Los lugares se piden a la vez que se coloca la cámara y se mide el terreno.
+  const places = loadCityPois(place.lat, place.lng);
+
   step('city', 'active');
   ufo.teleport(place.lat, place.lng);
   ufo.render(0);
-  const ground = await groundHeight(world, place.lat, place.lng);
+  const ground = await Promise.race([groundHeight(world, place.lat, place.lng), timeout(8000, 0)]);
   ufo.teleport(place.lat, place.lng, ground);
   ufo.render(0);
   step('city', 'done');
   setProgress(0.15);
 
-  // 2. Lugares de interés (Wikipedia) mientras siguen cargando las teselas.
   step('places', 'active');
   try {
-    pois.add(await loadCityPois(place.lat, place.lng));
+    pois.add(await places);
     step('places', 'done');
   } catch {
     step('places', 'fail');
   }
-  setProgress(0.4);
+  setProgress(0.35);
 
-  // 3. Edificios y terreno.
   step('tiles', 'active');
   await loadTiles(world);
   step('tiles', 'done');
   setProgress(1);
   updateHud();
-  await new Promise((r) => setTimeout(r, 400));
+  await timeout(350, 0);
   $('loading').hidden = true;
 }
 
-// ---------- Menú de lugares ----------
-function renderMenu() {
-  const { discovered, total } = pois.progress();
-  const left = total - discovered;
-  $('menu-summary').innerHTML = `<b>${discovered}</b> ${discovered === 1 ? 'descubierto' : 'descubiertos'} · <b>${left}</b> por descubrir`;
-  $('menu-progress').style.width = total ? `${(discovered / total) * 100}%` : '0';
-
-  const hints = $('menu-hints');
-  hints.innerHTML = '';
-  for (const { poi, dist } of pois.hints(ufo.lat, ufo.lng)) {
-    const rel = bearing(ufo, poi) - (ufo.heading * 180) / Math.PI;
-    const li = document.createElement('li');
-    li.innerHTML = `<span class="hint-arrow" style="transform: rotate(${rel}deg)">▲</span><b>???</b><small>${dist > 1000 ? `${(dist / 1000).toFixed(1)} km` : `${Math.round(dist)} m`}</small>`;
-    hints.append(li);
-  }
-
-  const list = $('menu-list');
-  list.innerHTML = '';
-  const found = [...pois.pois.values()].filter((p) => pois.isDiscovered(p));
-  $('menu-empty').hidden = found.length > 0;
-  for (const poi of found) {
-    const li = document.createElement('li');
-    li.className = 'found';
-    li.innerHTML = `${poi.image ? `<img src="${poi.image}" alt="" />` : '<span class="thumb">✓</span>'}<b></b>`;
-    li.querySelector('b')!.textContent = poi.name;
-    li.onclick = () => openCard(poi);
-    list.append(li);
-  }
-}
-
-function closeMenu() {
-  $('menu').hidden = true;
-}
-$('menu-btn').onclick = () => {
-  $('menu').hidden = !$('menu').hidden;
-  if (!$('menu').hidden) renderMenu();
-};
-$('menu-close').onclick = closeMenu;
-
 // ---------- Ficha del lugar ----------
 let openPoi: Poi | undefined;
+let sheetFromDiscovery = false;
 
-async function openCard(poi: Poi) {
+function setTag(el: HTMLElement, kind: 'found' | 'sponsor' | 'mystery') {
+  const label = { found: 'Descubierto', sponsor: 'Patrocinado', mystery: 'Por descubrir' }[kind];
+  const iconName: IconName = { found: 'check', sponsor: 'star', mystery: 'question' }[kind] as IconName;
+  el.className = `tag tag-${kind}`;
+  el.innerHTML = `${icon(iconName)}<span></span>`;
+  el.querySelector('span')!.textContent = label;
+}
+
+async function openSheet(poi: Poi, fromDiscovery = false) {
   openPoi = poi;
-  $('card-title').textContent = poi.name;
-  $('card-text').textContent = poi.description ?? '';
-  const img = $<HTMLImageElement>('card-img');
+  sheetFromDiscovery = fromDiscovery;
+  closeDrawer();
+  closePopovers();
+  const img = $<HTMLImageElement>('sheet-img');
+  $('sheet').classList.toggle('no-media', !poi.image);
   img.hidden = !poi.image;
   if (poi.image) img.src = poi.image;
-  const link = $<HTMLAnchorElement>('card-link');
-  link.hidden = !poi.url && !poi.wikiTitle;
-  link.href = poi.url ?? '#';
-  const sponsor = $('card-sponsor');
-  sponsor.hidden = !poi.sponsor;
-  sponsor.textContent = '★ Recomendado';
-  const cta = $<HTMLAnchorElement>('card-cta');
+  img.alt = poi.name;
+  setTag($('sheet-status'), poi.sponsor ? 'sponsor' : pois.isDiscovered(poi) ? 'found' : 'mystery');
+  $('sheet-dist').textContent = `A ${formatDistance(distance(ufo, poi))}`;
+  $('sheet-title').textContent = poi.name;
+  const desc = poi.description ? poi.description[0].toUpperCase() + poi.description.slice(1) : '';
+  $('sheet-desc').textContent = desc;
+  $('sheet-desc').hidden = !desc;
+  $('sheet-text').textContent = '';
+  const link = $<HTMLAnchorElement>('sheet-link');
+  link.hidden = !poi.wikiTitle && !poi.url;
+  link.href = poi.url ?? (poi.wikiTitle ? wikiUrl(poi.wikiTitle) : '#');
+  const cta = $<HTMLAnchorElement>('sheet-cta');
   cta.hidden = !poi.sponsor?.link;
   if (poi.sponsor?.link) {
     cta.href = poi.sponsor.link;
-    cta.textContent = poi.sponsor.cta ?? 'Visitar';
+    cta.textContent = poi.sponsor.cta ?? 'Visitar web';
   }
-  $('card').hidden = false;
+  const credit = $('sheet-credit');
+  credit.textContent = '';
+  $('sheet').hidden = false;
 
-  if (poi.wikiTitle) {
-    const s = await fetchSummary(poi.wikiTitle).catch(() => undefined);
-    if (s && openPoi === poi) {
-      $('card-text').textContent = s.extract;
-      if (s.image) { img.src = s.image; img.hidden = false; }
-      link.href = s.url;
-    }
+  const [summary, photo] = await Promise.all([
+    poi.wikiTitle ? fetchSummary(poi.wikiTitle).catch(() => undefined) : undefined,
+    poi.image ? fetchImageCredit(poi.image).catch(() => undefined) : undefined,
+  ]);
+  if (openPoi !== poi) return;
+  $('sheet-text').textContent = summary?.extract ?? '';
+  if (summary?.url) link.href = summary.url;
+  if (!poi.image && summary?.image) {
+    img.src = summary.image;
+    img.hidden = false;
+    $('sheet').classList.remove('no-media');
   }
+  // Atribución obligatoria: autor y licencia de la foto, y licencia del texto.
+  credit.textContent = '';
+  if (photo) {
+    credit.append('Foto: ');
+    const a = document.createElement('a');
+    a.href = photo.url;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.textContent = photo.artist;
+    credit.append(a, photo.license ? ` (${photo.license}). ` : '. ');
+  }
+  if (poi.wikiTitle) credit.append('Texto: Wikipedia (CC BY-SA 4.0).');
 }
 
-function closeCard() {
+function closeSheet() {
   openPoi = undefined;
-  $('card').hidden = true;
+  $('sheet').hidden = true;
 }
-$('card-close').onclick = closeCard;
+$('sheet-close').onclick = closeSheet;
 
-// Clic/toque sobre un globo ya visible abre su ficha (si está descubierto).
-new ScreenSpaceEventHandler(viewer.scene.canvas).setInputAction((e: { position: any }) => {
-  const picked = viewer.scene.pick(e.position);
-  const poi = defined(picked) && pois.pois.get(picked.id?.id);
-  if (poi && pois.isDiscovered(poi)) openCard(poi);
-  else if (poi) banner('¡Acércate para descubrirlo!', 'info');
-}, ScreenSpaceEventType.LEFT_CLICK);
+pois.onSelect = (poi) => {
+  if (pois.isDiscovered(poi) || poi.sponsor) openSheet(poi);
+  else toast({ title: 'Acércate para descubrir este lugar', iconName: 'question' });
+};
 
-// ---------- Controles ----------
+// ---------- Lugares descubiertos ----------
+let gridCount = -1;
+
+function renderDrawer() {
+  const { discovered, total } = pois.progress();
+  $('drawer-found').textContent = String(discovered);
+  $('drawer-total').textContent = String(total);
+  $('drawer-bar').style.width = total ? `${(discovered / total) * 100}%` : '0';
+
+  const hints = pois.hints(ufo.lat, ufo.lng);
+  $('drawer-hints-section').hidden = !hints.length;
+  const list = $('drawer-hints');
+  list.innerHTML = '';
+  for (const { poi, dist } of hints) {
+    const rel = bearing(ufo, poi) - (ufo.heading * 180) / Math.PI;
+    const li = document.createElement('li');
+    li.innerHTML = `<span class="compass-arrow" style="transform: rotate(${(rel + 45).toFixed(0)}deg)">${icon('nav')}</span>${formatDistance(dist)}`;
+    list.append(li);
+  }
+
+  // La cuadrícula solo se rehace cuando cambia el número de descubiertos (evita recargar fotos).
+  const found = [...pois.pois.values()].filter((p) => pois.isDiscovered(p) && !p.sponsor);
+  $('drawer-empty').hidden = found.length > 0;
+  if (found.length === gridCount) return;
+  gridCount = found.length;
+  const grid = $('drawer-grid');
+  grid.innerHTML = '';
+  for (const poi of found) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'place';
+    b.innerHTML = '<img alt="" loading="lazy" /><span></span>';
+    if (poi.thumb) b.querySelector('img')!.src = poi.thumb;
+    b.querySelector('span')!.textContent = poi.name;
+    b.onclick = () => openSheet(poi);
+    grid.append(b);
+  }
+}
+
+function closeDrawer() {
+  $('drawer').hidden = true;
+}
+function toggleDrawer() {
+  const drawer = $('drawer');
+  if (!drawer.hidden) return closeDrawer();
+  closePopovers();
+  closeSheet();
+  gridCount = -1;
+  renderDrawer();
+  drawer.hidden = false;
+}
+$('menu-btn').onclick = toggleDrawer;
+$('drawer-close').onclick = closeDrawer;
+
+// ---------- Ajustes y controles ----------
+function closePopovers() {
+  $('settings').hidden = true;
+  $('help').hidden = true;
+}
+function closePanels() {
+  closePopovers();
+  closeDrawer();
+  closeSheet();
+}
+function togglePopover(id: 'settings' | 'help') {
+  const el = $(id);
+  const open = el.hidden;
+  closePopovers();
+  el.hidden = !open;
+}
+$('settings-btn').onclick = (e) => { e.stopPropagation(); togglePopover('settings'); };
+$('help-btn').onclick = (e) => { e.stopPropagation(); togglePopover('help'); };
+document.addEventListener('pointerdown', (e) => {
+  const t = e.target as Node;
+  for (const id of ['settings', 'help']) {
+    const el = $(id);
+    if (!el.hidden && !el.contains(t) && !$(`${id}-btn`).contains(t)) el.hidden = true;
+  }
+});
+
+function renderQuality() {
+  document.querySelectorAll<HTMLButtonElement>('[data-quality]').forEach((b) => {
+    b.setAttribute('aria-checked', String(b.dataset.quality === quality));
+  });
+}
+document.querySelectorAll<HTMLButtonElement>('[data-quality]').forEach((b) => {
+  b.onclick = () => {
+    quality = b.dataset.quality as Quality;
+    setQuality(world, quality);
+    renderQuality();
+  };
+});
+renderQuality();
+
+$('reset-progress').onclick = () => {
+  if (!confirm('¿Reiniciar los lugares descubiertos en esta ciudad?')) return;
+  pois.resetProgress();
+  gridCount = -1;
+  closePopovers();
+  updateHud();
+  toast({ title: 'Progreso reiniciado', iconName: 'reset' });
+};
+const about = $<HTMLDialogElement>('about');
+$('about-btn').onclick = () => { closePopovers(); about.showModal(); };
+$('about-close').onclick = () => about.close();
+
+const HELP_KEY = 'flyfly:helpSeen';
+function showHelpOnce() {
+  if (matchMedia('(pointer: coarse)').matches) return;
+  try {
+    if (localStorage.getItem(HELP_KEY)) return;
+    localStorage.setItem(HELP_KEY, '1');
+  } catch { /* sin almacenamiento */ }
+  $('help').hidden = false;
+  setTimeout(() => ($('help').hidden = true), 9000);
+}
+
+// ---------- Mandos ----------
 const keys = new Set<string>();
 const stick = { x: 0, y: 0 };
 let touchLift = 0;
 
 window.addEventListener('keydown', (e) => {
-  if (e.target instanceof HTMLInputElement) return;
+  if (e.target instanceof HTMLInputElement || about.open) return;
   keys.add(e.code);
   if (e.code === 'KeyC') ufo.toggleCamera();
   // if (e.code === 'KeyM') sound.toggle(); // Sonido
-  if (e.code === 'Escape') { closeCard(); closeMenu(); }
-  if (e.code === 'Tab') { e.preventDefault(); $('menu-btn').click(); }
+  if (e.code === 'Escape') closePanels();
+  if (e.code === 'Tab' && flying) { e.preventDefault(); toggleDrawer(); }
   if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
 });
 window.addEventListener('keyup', (e) => keys.delete(e.code));
@@ -289,7 +504,7 @@ stickEl.addEventListener('pointerup', releaseStick);
 stickEl.addEventListener('pointercancel', releaseStick);
 document.querySelectorAll<HTMLButtonElement>('[data-lift]').forEach((b) => {
   b.onpointerdown = () => (touchLift = Number(b.dataset.lift));
-  b.onpointerup = b.onpointerleave = () => (touchLift = 0);
+  b.onpointerup = b.onpointerleave = b.onpointercancel = () => (touchLift = 0);
 });
 $('cam-btn').onclick = () => ufo.toggleCamera();
 
@@ -303,6 +518,7 @@ const pinchDistance = () => {
 canvas.addEventListener('pointerdown', (e) => {
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   canvas.setPointerCapture(e.pointerId);
+  closePopovers();
 });
 canvas.addEventListener('pointermove', (e) => {
   const prev = pointers.get(e.pointerId);
@@ -325,41 +541,36 @@ canvas.addEventListener('wheel', (e) => {
 }, { passive: false });
 
 // ---------- HUD ----------
-let bannerTimer = 0;
-function banner(text: string, kind: 'found' | 'city' | 'info') {
-  const b = $('banner');
-  b.className = kind;
-  b.innerHTML = kind === 'found' ? `<small>¡Descubierto!</small>${text}` : text;
-  b.hidden = false;
-  // Reinicia la animación de entrada.
-  b.style.animation = 'none';
-  void b.offsetWidth;
-  b.style.animation = '';
-  clearTimeout(bannerTimer);
-  bannerTimer = window.setTimeout(() => (b.hidden = true), kind === 'found' ? 2600 : 2000);
-}
-
 function updateHud() {
-  $('altitude').textContent = `${Math.round(ufo.altitude)} m`;
-  const { found, target } = pois.update(ufo.lat, ufo.lng);
+  const { found, target } = pois.update(ufo.lat, ufo.lng, ufo.ground, ufo.excluded);
   if (found) {
     // sound.chime(); // Sonido
-    banner(found.name, 'found');
-    openCard(found);
+    toast({ label: 'Descubierto', title: found.name, image: found.thumb });
+    openSheet(found, true);
+    gridCount = -1;
   }
   const { discovered, total } = pois.progress();
   $('visited').textContent = String(discovered);
   $('total').textContent = String(total);
 
-  // Brújula hacia el lugar más cercano por descubrir, sin revelar su nombre.
-  $('nearest').hidden = !target;
+  // Brújula hacia el lugar oculto más cercano (la flecha del icono apunta al noroeste: +45°).
+  $('compass').hidden = !target;
   if (target) {
-    $('nearest-dist').textContent = target.dist > 1000 ? `${(target.dist / 1000).toFixed(1)} km` : `${Math.round(target.dist)} m`;
+    $('compass-dist').textContent = formatDistance(target.dist);
     const rel = bearing(ufo, target.poi) - (ufo.heading * 180) / Math.PI;
-    $('nearest-arrow').style.transform = `rotate(${rel}deg)`;
+    $('compass-arrow').style.transform = `rotate(${(rel + 45).toFixed(1)}deg)`;
   }
-  if (openPoi && distance(ufo, openPoi) > 1200) closeCard();
-  if (!$('menu').hidden) renderMenu();
+
+  // Altitud sobre el nivel del mar: las teselas 3D usan alturas elipsoidales (WGS84), se corrige con el geoide.
+  const msl = world.tileset ? ufo.height - geoidHeight(ufo.lat, ufo.lng) : ufo.height;
+  $('altitude-value').textContent = `${Math.round(msl)} m`;
+
+  if (openPoi) {
+    const d = distance(ufo, openPoi);
+    $('sheet-dist').textContent = `A ${formatDistance(d)}`;
+    if (sheetFromDiscovery && d > 900) closeSheet();
+  }
+  if (!$('drawer').hidden) renderDrawer();
 }
 
 // ---------- Bucle principal ----------
@@ -378,10 +589,12 @@ viewer.scene.preUpdate.addEventListener(() => {
   slowTimer += dt;
   if (slowTimer > 0.25) {
     slowTimer = 0;
-    ufo.sampleGround();
+    ufo.sampleGround(pois.excluded);
     updateHud();
   }
 });
+// Los marcadores HTML se recolocan después de cada fotograma, con la cámara ya actualizada.
+viewer.scene.postRender.addEventListener(() => pois.render());
 
 // Acceso para depuración en desarrollo (no se incluye en la web publicada).
-if (import.meta.env.DEV) Object.assign(window, { flyfly: { ufo, pois, startFlight } });
+if (import.meta.env.DEV) Object.assign(window, { flyfly: { ufo, pois, startFlight, openSheet } });

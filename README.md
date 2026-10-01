@@ -12,13 +12,13 @@
 
 FlyFly te pone a los mandos de un ovni sobre ciudades reales en 3D. Edificios, calles, playas y monumentos tal y como son, vistos desde el aire con la misma calidad que Google Earth.
 
-Los lugares más interesantes de la ciudad están escondidos en **globos aerostáticos** que solo aparecen cuando te acercas. Encuéntralos todos y descubre su historia, sus fotos y todo lo que merece la pena saber antes de visitarlos en persona.
+Los lugares más interesantes de la ciudad están escondidos. Un haz de luz y una brújula te guían hasta ellos; al acercarte, el marcador se convierte en una tarjeta con la foto y el nombre del sitio. Encuéntralos todos y descubre su historia antes de visitarlos en persona.
 
 ## ¿Qué puedes hacer?
 
 - 🌍 **Volar sobre cualquier ciudad del mundo en 3D**: escribe su nombre y despega.
-- 🎈 **Encontrar lugares escondidos**: monumentos, museos, playas, miradores y rincones con historia. Una brújula te da pistas de hacia dónde volar.
-- 📖 **Conocer cada lugar**: al pasar cerca de un globo se abre una ficha con fotos y una descripción del sitio.
+- 🎯 **Encontrar lugares escondidos**: monumentos, museos, playas, miradores y rincones con historia. Una brújula y haces de luz te dan pistas de hacia dónde volar.
+- 📖 **Conocer cada lugar**: al descubrirlo se abre una ficha con foto, descripción y enlace a Wikipedia.
 - 🏆 **Completar la ciudad**: el menú de lugares muestra los que has descubierto y cuántos te quedan. Tu progreso se guarda.
 - 🛸 **Pilotar un ovni**: quédate flotando para admirar las vistas, sube, baja o deslízate en cualquier dirección. Cámara exterior o vista de dron.
 - 📱 **Jugar donde quieras**: funciona en el navegador del ordenador, la tableta o el móvil, sin instalar nada.
@@ -34,10 +34,12 @@ Los lugares más interesantes de la ciudad están escondidos en **globos aerost�
 | Girar la cámara 360° | Arrastrar con el ratón | Arrastrar con el dedo |
 | Acercar / alejar cámara | Rueda del ratón | Pellizcar |
 | Cambiar cámara | C | Botón 🎥 |
-| Menú de lugares | Tab | Botón 🎈 |
+| Menú de lugares | Tab | Botón de progreso |
 | Cerrar ficha | Esc | ✕ |
 
-Si sueltas los mandos, el ovni se queda flotando en el sitio. Vuela siempre entre 20 y 500 metros sobre la ciudad.
+Si sueltas los mandos, el ovni se queda flotando en el sitio. Vuela siempre entre 20 y 500 metros sobre la ciudad, y el indicador muestra la altitud sobre el nivel del mar.
+
+En **Ajustes** puedes elegir la calidad del mapa (Rápida, Equilibrada o Alta) según tu equipo.
 
 En el menú de lugares puedes volver a abrir la ficha de cualquier sitio que ya hayas descubierto.
 
@@ -51,7 +53,7 @@ FlyFly es un escaparate turístico diferente: los visitantes exploran la ciudad 
 
 ## Para negocios locales
 
-Restaurantes, hoteles, tiendas y experiencias pueden aparecer en el mapa con un **globo dorado destacado**, con su propia ficha y un botón directo para reservar, comprar o visitar su web.
+Restaurantes, hoteles, tiendas y experiencias pueden aparecer en el mapa con un **marcador destacado y visible desde más lejos**, identificado como patrocinado, con su propia ficha y un botón directo para reservar, comprar o visitar su web.
 
 ## Próximamente
 
@@ -61,6 +63,6 @@ Restaurantes, hoteles, tiendas y experiencias pueden aparecer en el mapa con un 
 
 ---
 
-<sub>Imágenes 3D: Google Photorealistic 3D Tiles vía Cesium ion. Ortofotos: PNOA © Instituto Geográfico Nacional de España y Sentinel-2 cloudless por EOX. Información de lugares: Wikipedia (CC BY-SA). Búsqueda: OpenStreetMap.</sub>
+<sub>Imágenes 3D: Google Photorealistic 3D Tiles vía Cesium ion. Ortofotos: PNOA © Instituto Geográfico Nacional de España y Sentinel-2 cloudless por EOX. Información de lugares: Wikipedia (CC BY-SA 4.0); fotos de Wikimedia Commons con su autor y licencia en cada ficha. Búsqueda: Google u OpenStreetMap. Altitud: geoide EGM96. Iconos: Phosphor. Tipografía: Outfit.</sub>
 
 <sub>¿Eres desarrollador? Consulta la [guía de desarrollo](docs/DESARROLLO.md).</sub>

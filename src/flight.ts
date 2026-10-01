@@ -1,4 +1,4 @@
-import { Cartesian3, HeadingPitchRange, HeadingPitchRoll, Math as CMath, Matrix4, Model, Transforms, Viewer } from 'cesium';
+import { Cartesian3, HeadingPitchRange, HeadingPitchRoll, Math as CMath, Matrix3, Matrix4, Model, Transforms, Viewer } from 'cesium';
 
 const R = 6378137;
 const MAX_SPEED = 55; // m/s en horizontal
@@ -20,11 +20,12 @@ export class Craft {
   ground = 0;
   cameraMode: CameraMode = 'chase';
   /** Inclinación (rad, negativa = mirando hacia abajo) y distancia (m) de la cámara; se cambian arrastrando. */
-  camPitch = -0.45;
-  camRange = 45;
+  camPitch = -0.32;
+  camRange = 55;
   private vel = { e: 0, n: 0, u: 0 }; // m/s
   private camHeading = 0;
   private time = 0;
+  private spin = new Matrix3();
   private model?: Model;
 
   constructor(private viewer: Viewer) {}
@@ -80,11 +81,17 @@ export class Craft {
   }
 
   /** Muestrea la altura del terreno/edificios bajo el ovni (llamar unas pocas veces por segundo). */
-  sampleGround() {
+  /** Objetos a ignorar al medir el suelo (el propio ovni). */
+  get excluded(): object[] {
+    return this.model ? [this.model] : [];
+  }
+
+  /** `exclude`: objetos que no cuentan como suelo además del ovni (p. ej. los haces de luz). */
+  sampleGround(exclude: object[] = []) {
     const scene = this.viewer.scene;
     const carto = scene.globe.ellipsoid.cartesianToCartographic(this.position);
     const h = scene.sampleHeightSupported
-      ? scene.sampleHeight(carto, this.model ? [this.model] : [])
+      ? scene.sampleHeight(carto, [...this.excluded, ...exclude])
       : scene.globe.getHeight(carto);
     if (h !== undefined) this.ground = h;
   }
@@ -100,6 +107,9 @@ export class Craft {
       const hpr = new HeadingPitchRoll(this.heading - CMath.PI_OVER_TWO, -fwd * 0.3, side * 0.3);
       const at = Cartesian3.fromDegrees(this.lng, this.lat, this.height + bob);
       Transforms.headingPitchRollToFixedFrame(at, hpr, undefined, undefined, this.model.modelMatrix);
+      // Giro lento sobre su eje (se aprecia por las luces de colores del borde).
+      Matrix3.fromRotationZ(this.time * 0.8, this.spin);
+      Matrix4.multiplyByMatrix3(this.model.modelMatrix, this.spin, this.model.modelMatrix);
       this.model.show = this.cameraMode === 'chase';
     }
 

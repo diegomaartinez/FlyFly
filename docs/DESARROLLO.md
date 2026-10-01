@@ -26,7 +26,7 @@ npm run dev
 | Fotorrealista con clave de Google | Lo mismo, facturado directamente por Google (con cuota gratuita mensual) | Activa *Map Tiles API* en Google Cloud y usa `VITE_GOOGLE_MAPS_API_KEY` |
 | Libre (sin claves) | Ortofoto PNOA del IGN (España, ~25 cm/píxel) y Sentinel-2 en el resto, en plano | Nada |
 
-`VITE_TILE_DETAIL` controla la nitidez de las teselas 3D (16 por defecto; 8 = máxima calidad pero carga más lenta).
+La calidad del mapa (Alta, Equilibrada o Rápida) se elige en la web, en Ajustes; por defecto se adapta al dispositivo.
 
 > ⚠️ El plan gratuito de Cesium ion es para uso no comercial o de evaluación. Para la versión de ayuntamientos/negocios hará falta un plan comercial de Cesium o una clave de Google con facturación. Las atribuciones de Google/Cesium en pantalla son obligatorias: no las ocultes.
 
@@ -43,18 +43,40 @@ npm run dev
 | Tab | menú de lugares |
 | Esc | cerrar ficha / menú |
 
-En móvil aparecen un joystick y botones táctiles. Se puede hacer clic en cualquier globo para abrir su ficha.
+En móvil aparecen un joystick y botones táctiles. Se puede tocar cualquier marcador descubierto para abrir su ficha.
 
 ## Lugares de interés
 
-- **Wikipedia en directo**: artículos geolocalizados con foto, en cualquier ciudad del mundo (buscador con Nominatim en modo libre y Google vía Cesium ion en modo 3D).
-Al elegir una ciudad se cargan de golpe hasta 80 lugares (centro + anillo de 3,5 km), así el recuento de "por descubrir" es fijo.
-
-Los lugares patrocinados se representan con el campo `sponsor` de `Poi` (`src/pois.ts`) y se muestran como globo dorado con botón de acción. Falta conectar la fuente de datos de patrocinadores (JSON o backend).
+Artículos geolocalizados de Wikipedia con foto, en cualquier ciudad del mundo. El buscador usa Nominatim (OpenStreetMap) en modo libre y Google (vía Cesium ion o clave propia) en modo 3D, porque las teselas de Google solo pueden usarse con su geocodificador.
 
 ## Mecánica de juego
 
-Los globos están ocultos: aparecen a 1 km y se descubren al pasar a menos de 220 m. El progreso se guarda en el navegador (`localStorage`). La brújula señala el lugar sin descubrir más cercano.
+Al elegir una ciudad se cargan de golpe hasta 80 lugares de Wikipedia (centro + anillo de 3,5 km), así el recuento es fijo. Cada lugar pasa por estos estados (`src/pois.ts`):
+
+| Distancia al ovni | Estado | Se ve |
+|---|---|---|
+| > 1,2 km | oculto | nada (solo la brújula) |
+| 1,2 km - 500 m | misterio | marcador "?" + haz de luz naranja |
+| 500 - 250 m | cerca | tarjeta con la foto desenfocada y la distancia |
+| < 250 m | descubierto | tarjeta con foto, nombre y descripción (píldora compacta a más de 700 m) |
+
+Los marcadores son elementos HTML (`#markers`) que se recolocan en cada fotograma con `SceneTransforms.worldToWindowCoordinates`; su altura se mide con `sampleHeightMostDetailed` (35 m sobre el suelo o el tejado). Los haces de luz son polilíneas de Cesium y se excluyen al medir alturas.
+
+El progreso se guarda en el navegador (`localStorage`) y se puede reiniciar desde Ajustes.
+
+Los lugares patrocinados se representan con el campo `sponsor` de `Poi`: se ven desde 3 km, con borde ámbar, la etiqueta "Patrocinado" y un botón de acción (`rel="sponsored"`). Falta conectar la fuente de datos de patrocinadores (JSON o backend).
+
+## Altitud
+
+Las teselas 3D usan alturas elipsoidales (WGS84). Para mostrar la altitud sobre el nivel del mar se resta la ondulación del geoide EGM96, interpolada de `public/data/geoid-egm96-1deg.bin` (malla de 1°, 130 KB, error medio ~0,2 m). Se regenera con `node scripts/make-geoid.mjs` (usa el paquete `egm96-universal`, solo en desarrollo).
+
+## Calidad y carga del mapa
+
+En Ajustes: Rápida (detalle 28, sin antialiasing), Equilibrada (16) y Alta (8, resolución nativa). Por defecto Rápida en móviles y equipos con 4 núcleos o menos. Además (`src/world.ts`): hasta 36 descargas simultáneas por servidor (HTTP/2), carga progresiva de baja resolución primero, y menos detalle hacia el horizonte (niebla y `dynamicScreenSpaceError`).
+
+## Atribuciones
+
+Obligatorias y ya integradas: créditos de Google/Cesium en pantalla (no ocultarlos), autor y licencia de cada foto en su ficha (API de Wikimedia), licencia CC BY-SA del texto de Wikipedia y un diálogo de "Créditos y fuentes de datos" en Ajustes.
 
 ## Ovni
 
@@ -67,9 +89,11 @@ Para que la ciudad cargue antes, lo lejano se pide con muy poco detalle: niebla 
 ## Estructura
 
 ```
-src/world.ts    visor Cesium, modo de teselas y geocodificación
+src/world.ts    visor Cesium, modo de teselas, calidad y geocodificación
 src/flight.ts   control del ovni y cámaras
-src/pois.ts     carga de lugares, globos y distancias
-src/main.ts     HUD, fichas, controles y bucle principal
+src/pois.ts     lugares de Wikipedia, descubrimiento, marcadores HTML y haces de luz
+src/main.ts     interfaz (inicio, carga, ficha, menú, ajustes), controles y bucle principal
+src/geoid.ts    altitud sobre el nivel del mar (geoide EGM96)
+src/icons.ts    iconos Phosphor usados en la interfaz
 src/sound.ts    zumbido del ovni y sonido de descubrimiento (desactivado: ver comentarios "Sonido" en main.ts)
 ```
