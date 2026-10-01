@@ -35,7 +35,6 @@ Los lugares más interesantes de la ciudad están escondidos en **globos aerost�
 | Acercar / alejar cámara | Rueda del ratón | Pellizcar |
 | Cambiar cámara | C | Botón 🎥 |
 | Menú de lugares | Tab | Botón 🎈 |
-| Silenciar sonido | M | |
 | Cerrar ficha | Esc | ✕ |
 
 Si sueltas los mandos, el ovni se queda flotando en el sitio. Vuela siempre entre 20 y 500 metros sobre la ciudad.

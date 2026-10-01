@@ -40,7 +40,6 @@ npm run dev
 | Espacio (o R) / Shift (o F) | subir / bajar |
 | Arrastrar / rueda (pellizco en móvil) | girar la cámara 360° / acercar-alejar |
 | C | cámara exterior / dron |
-| M | silenciar |
 | Tab | menú de lugares |
 | Esc | cerrar ficha / menú |
 
@@ -72,5 +71,5 @@ src/world.ts    visor Cesium, modo de teselas y geocodificación
 src/flight.ts   control del ovni y cámaras
 src/pois.ts     carga de lugares, globos y distancias
 src/main.ts     HUD, fichas, controles y bucle principal
-src/sound.ts    zumbido del ovni y sonido de descubrimiento sintetizados
+src/sound.ts    zumbido del ovni y sonido de descubrimiento (desactivado: ver comentarios "Sonido" en main.ts)
 ```

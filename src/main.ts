@@ -3,7 +3,8 @@ import './style.css';
 import { Controls, Craft } from './flight';
 import { bearing, distance, fetchSummary, loadCityPois, Poi, PoiLayer } from './pois';
 import { createWorld, geocode, GeoResult, groundHeight, World } from './world';
-import { EngineSound } from './sound';
+// Sonido desactivado (para reactivarlo, descomenta las líneas marcadas con "Sonido").
+// import { EngineSound } from './sound'; // Sonido
 import { defined, ScreenSpaceEventHandler, ScreenSpaceEventType } from 'cesium';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -12,7 +13,7 @@ const world = await createWorld($('world'));
 const { viewer } = world;
 const ufo = new Craft(viewer);
 const pois = new PoiLayer(viewer);
-const sound = new EngineSound();
+// const sound = new EngineSound(); // Sonido
 await ufo.load('models/ufo.glb');
 
 $('mode-note').textContent = world.error
@@ -72,7 +73,7 @@ $('search').addEventListener('submit', async (e) => {
 
 async function startFlight(place: GeoResult) {
   try { localStorage.setItem(LAST_CITY_KEY, place.name); } catch { /* sin almacenamiento */ }
-  sound.start();
+  // sound.start(); // Sonido
   $('intro').hidden = true;
   await flyTo(place);
   flying = true;
@@ -251,7 +252,7 @@ window.addEventListener('keydown', (e) => {
   if (e.target instanceof HTMLInputElement) return;
   keys.add(e.code);
   if (e.code === 'KeyC') ufo.toggleCamera();
-  if (e.code === 'KeyM') sound.toggle();
+  // if (e.code === 'KeyM') sound.toggle(); // Sonido
   if (e.code === 'Escape') { closeCard(); closeMenu(); }
   if (e.code === 'Tab') { e.preventDefault(); $('menu-btn').click(); }
   if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
@@ -342,7 +343,7 @@ function updateHud() {
   $('altitude').textContent = `${Math.round(ufo.altitude)} m`;
   const { found, target } = pois.update(ufo.lat, ufo.lng);
   if (found) {
-    sound.chime();
+    // sound.chime(); // Sonido
     banner(found.name, 'found');
     openCard(found);
   }
@@ -372,7 +373,7 @@ viewer.scene.preUpdate.addEventListener(() => {
   if (paused) return;
   ufo.update(dt, readControls());
   ufo.render(dt);
-  sound.update(ufo.speed);
+  // sound.update(ufo.speed); // Sonido
 
   slowTimer += dt;
   if (slowTimer > 0.25) {
