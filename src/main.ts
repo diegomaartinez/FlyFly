@@ -271,7 +271,7 @@ function readControls(): Controls {
   };
 }
 
-// Joystick táctil: la posición del dedo respecto al centro controla alabeo y cabeceo.
+// Joystick táctil: arriba/abajo avanza o retrocede, a los lados gira.
 const stickEl = $('stick');
 const knob = stickEl.firstElementChild as HTMLElement;
 stickEl.addEventListener('pointerdown', (e) => stickEl.setPointerCapture(e.pointerId));
@@ -292,6 +292,37 @@ document.querySelectorAll<HTMLButtonElement>('[data-lift]').forEach((b) => {
 });
 $('cam-btn').onclick = () => ufo.toggleCamera();
 
+// Cámara: arrastrar (ratón o un dedo) gira 360°, rueda o pellizco acerca/aleja.
+const canvas = viewer.scene.canvas;
+const pointers = new Map<number, { x: number; y: number }>();
+const pinchDistance = () => {
+  const [a, b] = [...pointers.values()];
+  return Math.hypot(a.x - b.x, a.y - b.y);
+};
+canvas.addEventListener('pointerdown', (e) => {
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  canvas.setPointerCapture(e.pointerId);
+});
+canvas.addEventListener('pointermove', (e) => {
+  const prev = pointers.get(e.pointerId);
+  if (!prev) return;
+  if (pointers.size === 1) {
+    ufo.orbit(e.clientX - prev.x, e.clientY - prev.y);
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  } else if (pointers.size === 2) {
+    const before = pinchDistance();
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    ufo.zoom(before / Math.max(1, pinchDistance()));
+  }
+});
+const releasePointer = (e: PointerEvent) => pointers.delete(e.pointerId);
+canvas.addEventListener('pointerup', releasePointer);
+canvas.addEventListener('pointercancel', releasePointer);
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  ufo.zoom(Math.exp(e.deltaY * 0.001));
+}, { passive: false });
+
 // ---------- HUD ----------
 let bannerTimer = 0;
 function banner(text: string, kind: 'found' | 'city' | 'info') {
@@ -308,6 +339,7 @@ function banner(text: string, kind: 'found' | 'city' | 'info') {
 }
 
 function updateHud() {
+  $('altitude').textContent = `${Math.round(ufo.altitude)} m`;
   const { found, target } = pois.update(ufo.lat, ufo.lng);
   if (found) {
     sound.chime();

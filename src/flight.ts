@@ -5,9 +5,9 @@ const MAX_SPEED = 55; // m/s en horizontal
 const MAX_LIFT = 25; // m/s en vertical
 const TURN_RATE = 1.4; // rad/s
 const RESPONSE = 2.2; // cuanto mayor, antes alcanza la velocidad deseada (y antes se detiene)
-const MIN_CLEARANCE = 15; // metros sobre suelo/edificios
-const MAX_ALTITUDE = 1500; // metros sobre el suelo
-const START_ALTITUDE = 250;
+const MIN_ALTITUDE = 20; // metros sobre el suelo/edificios que hay debajo
+const MAX_ALTITUDE = 500;
+const START_ALTITUDE = 120;
 
 /** Mandos normalizados entre -1 y 1. */
 export interface Controls { forward: number; strafe: number; turn: number; lift: number }
@@ -19,6 +19,9 @@ export class Craft {
   heading = 0; // radianes, 0 = norte, sentido horario
   ground = 0;
   cameraMode: CameraMode = 'chase';
+  /** Inclinación (rad, negativa = mirando hacia abajo) y distancia (m) de la cámara; se cambian arrastrando. */
+  camPitch = -0.45;
+  camRange = 45;
   private vel = { e: 0, n: 0, u: 0 }; // m/s
   private camHeading = 0;
   private time = 0;
@@ -37,6 +40,11 @@ export class Craft {
     this.ground = ground;
     this.height = ground + START_ALTITUDE;
     this.vel = { e: 0, n: 0, u: 0 };
+  }
+
+  /** Altura sobre lo que hay debajo (suelo o tejados). */
+  get altitude() {
+    return this.height - this.ground;
   }
 
   get position() {
@@ -64,8 +72,9 @@ export class Craft {
     this.lng += ((this.vel.e * dt) / (R * Math.cos(CMath.toRadians(this.lat)))) * CMath.DEGREES_PER_RADIAN;
     this.height += this.vel.u * dt;
 
-    const floor = this.ground + MIN_CLEARANCE;
-    if (this.height < floor) { this.height = floor; this.vel.u = Math.max(0, this.vel.u); }
+    const floor = this.ground + MIN_ALTITUDE;
+    // Por debajo del mínimo (p. ej. al pasar sobre un edificio alto) sube suavemente en vez de saltar.
+    if (this.height < floor) { this.height += (floor - this.height) * Math.min(1, 4 * dt); this.vel.u = Math.max(0, this.vel.u); }
     const ceiling = this.ground + MAX_ALTITUDE;
     if (this.height > ceiling) { this.height = ceiling; this.vel.u = Math.min(0, this.vel.u); }
   }
@@ -98,12 +107,24 @@ export class Craft {
     const diff = CMath.negativePiToPi(this.heading - this.camHeading);
     this.camHeading += diff * Math.min(1, 4 * dt);
     if (this.cameraMode === 'chase') {
-      camera.lookAt(pos, new HeadingPitchRange(this.camHeading, -0.22, 45));
+      camera.lookAt(pos, new HeadingPitchRange(this.camHeading, this.camPitch, this.camRange));
     } else {
       // Cámara de dron: desde el propio ovni, mirando hacia delante y abajo.
       camera.lookAtTransform(Matrix4.IDENTITY);
-      camera.setView({ destination: pos, orientation: { heading: this.camHeading, pitch: -0.5, roll: 0 } });
+      camera.setView({ destination: pos, orientation: { heading: this.camHeading, pitch: this.camPitch, roll: 0 } });
     }
+  }
+
+  /** Girar la cámara arrastrando: en horizontal cambia el rumbo (hacia donde avanza), en vertical la inclinación. */
+  orbit(dxPixels: number, dyPixels: number) {
+    this.heading = CMath.zeroToTwoPi(this.heading + dxPixels * 0.006);
+    this.camHeading = this.heading;
+    this.camPitch = CMath.clamp(this.camPitch - dyPixels * 0.005, -1.5, 0.15);
+  }
+
+  /** Acercar (factor < 1) o alejar (factor > 1) la cámara. */
+  zoom(factor: number) {
+    this.camRange = CMath.clamp(this.camRange * factor, 20, 250);
   }
 
   toggleCamera() {

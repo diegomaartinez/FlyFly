@@ -15,7 +15,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .cesium-viewer-bottom { opacity: .75; }
 
 /* Paneles tipo "píldora" blancos */
-#nearest, #card { background: var(--panel); border-radius: 999px; box-shadow: var(--shadow); }
+#nearest, #card, #altitude-box { background: var(--panel); border-radius: 999px; box-shadow: var(--shadow); }
 
 #topbar { position: fixed; top: 14px; left: 14px; right: 14px; display: flex; justify-content: space-between; gap: 8px; z-index: 5; pointer-events: none; background: none; box-shadow: none; }
 #topbar button { pointer-events: auto; background: var(--panel); border: 0; border-radius: 999px; box-shadow: var(--shadow); padding: 8px 18px; font-weight: 800; display: flex; align-items: baseline; gap: 6px; max-width: 60vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -48,6 +48,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #nearest-arrow { fill: var(--orange); transition: transform .25s; }
 
 
+#altitude-box { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); padding: 8px 18px; z-index: 4; font-weight: 900; font-variant-numeric: tabular-nums; }
+#world canvas { touch-action: none; cursor: grab; }
+#world canvas:active { cursor: grabbing; }
 #banner { position: fixed; left: 50%; top: 22%; max-width: 44vw; transform: translateX(-50%); z-index: 7; text-align: center; font-weight: 900; font-size: 44px; color: #fff;
   text-shadow: 0 3px 0 rgba(0,0,0,.25), 0 0 24px rgba(0,60,120,.45); animation: pop .5s cubic-bezier(.2,1.6,.4,1); pointer-events: none; line-height: 1.1; }
 #banner small { display: block; font-size: 22px; color: #ffe066; letter-spacing: 2px; text-transform: uppercase; }
@@ -85,6 +88,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 #touch { display: none; }
 @media (pointer: coarse) {
+  #altitude-box { bottom: auto; top: 74px; left: 14px; transform: none; }
   #touch { display: block; }
   #stick { position: fixed; left: 24px; bottom: 30px; width: 120px; height: 120px; border-radius: 50%; background: rgba(255,255,255,.35); border: 3px solid rgba(255,255,255,.8); touch-action: none; z-index: 5; }
   #stick i { position: absolute; left: 32px; top: 32px; width: 50px; height: 50px; border-radius: 50%; background: #fff; box-shadow: var(--shadow); }
@@ -119,4 +123,4 @@ kbd { display: inline-block; min-width: 26px; padding: 2px 7px; margin-right: 2p
 }
 
 /* El HUD solo se muestra durante el vuelo */
-body:not(.flying) #topbar, body:not(.flying) #nearest { visibility: hidden; }
+body:not(.flying) #topbar, body:not(.flying) #nearest, body:not(.flying) #altitude-box { visibility: hidden; }

@@ -38,6 +38,7 @@ npm run dev
 | ← → | girar |
 | A / D | desplazarse de lado |
 | Espacio (o R) / Shift (o F) | subir / bajar |
+| Arrastrar / rueda (pellizco en móvil) | girar la cámara 360° / acercar-alejar |
 | C | cámara exterior / dron |
 | M | silenciar |
 | Tab | menú de lugares |
@@ -58,7 +59,7 @@ Los globos están ocultos: aparecen a 1 km y se descubren al pasar a menos de 22
 
 ## Ovni
 
-`public/models/ufo.glb` se genera con `node scripts/make-ufo.mjs` (formas y colores editables en el script). La física está en `src/flight.ts`: el ovni se mueve como un dron, con inercia suave, y se queda flotando al soltar los mandos.
+`public/models/ufo.glb` se genera con `node scripts/make-ufo.mjs` (formas y colores editables en el script). La física está en `src/flight.ts`: el ovni se mueve como un dron, con inercia suave, y se queda flotando al soltar los mandos. Su altura se mantiene entre 20 y 500 m sobre lo que tiene debajo (suelo o tejados). Al arrastrar en horizontal cambia el rumbo, así que "adelante" es siempre hacia donde mira la cámara.
 
 ## Rendimiento del mapa
 
