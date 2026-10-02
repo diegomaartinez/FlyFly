@@ -142,17 +142,21 @@ function toGlbUrl(parts: Part[]): string {
 }
 
 const WHITE: RGB = [0.92, 0.92, 0.9];
-const WOOD: RGB = [0.28, 0.15, 0.06];
 const DARK: RGB = [0.05, 0.05, 0.06];
 
-/** Globo aerostático (~22 m de alto) con gajos del color elegido y blancos alternos. */
-export function balloonUrl(hex: string): string {
-  return toGlbUrl(balloonParts(hex));
+/** Colores por defecto del segundo gajo del globo, de la cesta y de la pancarta. */
+export const DEFAULT_COLOR2 = '#ffffff';
+export const DEFAULT_BASKET = '#6b4226';
+export const DEFAULT_BANNER = '#ffffff';
+
+/** Globo aerostático (~22 m de alto) con gajos alternos de dos colores y la cesta de un tercero. */
+export function balloonUrl(hex: string, hex2 = DEFAULT_COLOR2, basket = DEFAULT_BASKET): string {
+  return toGlbUrl(balloonParts(hex, hex2, basket));
 }
 
-/** Avioneta (~9 m) con alas y cola del color elegido y una pancarta remolcada del mismo color con `text`. */
-export function planeUrl(hex: string, text = ''): string {
-  return toGlbUrl(planeParts(hex, text));
+/** Avioneta (~9 m) del color elegido remolcando una pancarta de otro color con `text`. */
+export function planeUrl(hex: string, text = '', bannerHex = DEFAULT_BANNER): string {
+  return toGlbUrl(planeParts(hex, text, bannerHex));
 }
 
 /** Tipografía de la pancarta: cárgala (document.fonts.load) antes de generar la avioneta. */
@@ -183,7 +187,7 @@ export function bannerCanvas(hex: string, text: string): HTMLCanvasElement {
 
 /** Las dos caras de la pancarta, cada una con el texto legible desde su lado. */
 function bannerMesh(): Mesh {
-  const [z0, z1, y0, y1, x] = [-13.5, -24.5, -2, 1.2, 0.05];
+  const [z0, z1, y0, y1, x] = [-13.5, -30.5, -3, 2, 0.05];
   const quad = (xs: number, zl: number, zr: number) => ({
     positions: [xs, y0, zl, xs, y0, zr, xs, y1, zr, xs, y1, zl],
     normals: Array(4).fill([Math.sign(xs), 0, 0]).flat(),
@@ -194,7 +198,7 @@ function bannerMesh(): Mesh {
   return { ...merge([a, b]), uvs: [...a.uvs, ...b.uvs] };
 }
 
-export function balloonParts(hex: string): Part[] {
+export function balloonParts(hex: string, hex2 = DEFAULT_COLOR2, basket = DEFAULT_BASKET): Part[] {
   const color = hexToRgb(hex);
   const profile: [number, number][] = [[0.01, 21], [3, 20.5], [5.8, 19], [7.6, 16.5], [8.2, 13.5], [7.8, 10.5], [6.4, 8], [4.4, 6], [2.6, 4.6], [2, 4]];
   const GORES = 12;
@@ -203,26 +207,27 @@ export function balloonParts(hex: string): Part[] {
   const ropes = [[1, 1], [-1, 1], [1, -1], [-1, -1]].map(([x, z]) => box([x * 1.4, 2.2, z * 1.4], [0.08, 3.6, 0.08]));
   return [
     { mesh: merge(colored), color },
-    { mesh: merge(white), color: WHITE },
-    { mesh: box([0, 0, 0], [2.4, 1.4, 2.4]), color: WOOD, roughness: 0.9 },
+    { mesh: merge(white), color: hexToRgb(hex2) },
+    { mesh: box([0, 0, 0], [2.4, 1.4, 2.4]), color: hexToRgb(basket), roughness: 0.9 },
     { mesh: merge(ropes), color: DARK },
   ];
 }
 
-export function planeParts(hex: string, text = ''): Part[] {
+export function planeParts(hex: string, text = '', bannerHex = DEFAULT_BANNER): Part[] {
   const color = hexToRgb(hex);
+  const bannerColor = hexToRgb(bannerHex);
   const fuselage = yToZ(lathe([[0.01, 4.2], [0.55, 3.8], [0.75, 2.6], [0.75, 0.5], [0.55, -2], [0.25, -4.2], [0.01, -4.3]], 12));
   const wings = merge([box([0, 0.2, 1.2], [10, 0.18, 1.6]), box([0, 0.4, -3.8], [3.6, 0.12, 0.9]), box([0, 1.1, -3.9], [0.14, 1.6, 1])]);
   const prop = merge([box([0, 0, 4.35], [0.18, 2.6, 0.08]), box([0, 0, 4.35], [2.6, 0.18, 0.08])]);
-  // Pancarta: cuerda y lona vertical detrás de la cola.
+  // Pancarta: cuerda y lona vertical (17 × 5 m) detrás de la cola.
   const rope = box([0, 0, -9], [0.05, 0.05, 9]);
-  const banner = box([0, -0.4, -19], [0.06, 3.2, 11]);
+  const banner = box([0, -0.5, -22], [0.06, 5, 17]);
   return [
     { mesh: fuselage, color: WHITE, metallic: 0.2, roughness: 0.4 },
     { mesh: wings, color },
     { mesh: prop, color: DARK },
     { mesh: rope, color: DARK },
-    { mesh: banner, color, roughness: 0.8 },
-    ...(text.trim() ? [{ mesh: bannerMesh(), color, roughness: 0.8, texture: bannerCanvas(hex, text) }] : []),
+    { mesh: banner, color: bannerColor, roughness: 0.8 },
+    ...(text.trim() ? [{ mesh: bannerMesh(), color: bannerColor, roughness: 0.8, texture: bannerCanvas(bannerHex, text) }] : []),
   ];
 }

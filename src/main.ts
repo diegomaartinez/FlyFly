@@ -2,6 +2,7 @@ import '@cesium/engine/Source/Widget/CesiumWidget.css';
 import '@fontsource-variable/outfit';
 import './style.css';
 import { CITY_ALTITUDE, Controls, Craft } from './flight';
+import { HOME, IntroScene } from './intro';
 import { geoidHeight, loadGeoid } from './geoid';
 import { hydrateIcons, icon, IconName } from './icons';
 import { adsEnabled, manageConsent, showAd } from './ads';
@@ -25,6 +26,10 @@ const pois = new PoiLayer(viewer, $('markers'));
 const ads = new AdvertiserLayer(viewer, $('markers'));
 // const sound = new EngineSound(); // Sonido
 await ufo.load('models/ufo.glb');
+// Menú principal: la Tierra girando y el ovni acercándose por la derecha.
+viewer.camera.setView({ destination: HOME });
+const intro = new IntroScene(viewer, ufo);
+intro.showIdle();
 let quality: Quality = initialQuality();
 setQuality(world, quality);
 
@@ -192,12 +197,15 @@ function goHome() {
   $('victory').hidden = true;
   flying = false;
   paused = true;
+  currentCity = undefined; // cancela un despegue en curso
+  launchStatus('');
   document.body.classList.remove('flying');
   pois.clear();
   ads.clear();
   ufo.hide();
   viewer.camera.lookAtTransform(Matrix4.IDENTITY);
-  viewer.camera.flyHome(2);
+  viewer.camera.flyTo({ destination: HOME, duration: 2 });
+  intro.showIdle(2.2);
   searchInput.value = '';
   $('results').innerHTML = '';
   setStatus('');
@@ -246,7 +254,18 @@ $('search').addEventListener('submit', async (e) => {
   }
 });
 
+let launching = false;
 async function startFlight(place: GeoResult) {
+  if (launching) return;
+  launching = true;
+  try {
+    await launch(place);
+  } finally {
+    launching = false;
+  }
+}
+
+async function launch(place: GeoResult) {
   stopAutopilot();
   if (!edition) saveRecent(place);
   currentCity = place;
@@ -259,12 +278,12 @@ async function startFlight(place: GeoResult) {
   $('intro').hidden = true;
   $('results').innerHTML = '';
   setStatus('');
-  await flyTo(place);
+  const n = await flyTo(place);
+  if (currentCity !== place) return;
   flying = true;
   paused = false;
   document.body.classList.add('flying');
   const { total } = pois.progress();
-  const n = ads.pois.length;
   showAreaTitle(place.name, [
     total ? `${total} lugares escondidos por descubrir` : 'No hay lugares registrados en esta zona',
     n ? `${n} ${n === 1 ? 'negocio' : 'negocios'} en el mapa` : '',
@@ -272,15 +291,10 @@ async function startFlight(place: GeoResult) {
   showHelpOnce();
 }
 
-// ---------- Pantalla de carga ----------
-function step(name: string, state: 'active' | 'done' | 'fail') {
-  const li = document.querySelector<HTMLElement>(`#loading-steps [data-step="${name}"]`)!;
-  li.className = state;
-  li.querySelector('.step-icon')!.innerHTML = icon(state === 'done' ? 'check' : state === 'fail' ? 'warning' : 'loader');
-}
-
-function setProgress(fraction: number) {
-  $('loading-progress').style.width = `${Math.round(fraction * 100)}%`;
+// ---------- Despegue: animación del ovni desde el menú hasta la ciudad ----------
+function launchStatus(text: string) {
+  $('launch-text').textContent = text;
+  $('launch').hidden = !text;
 }
 
 /** Espera a que carguen las teselas visibles (como mucho `maxMs`), informando del avance de 0 a 1. */
@@ -303,61 +317,52 @@ function loadTiles(w: World, onProgress: (f: number) => void = () => {}, maxMs =
   });
 }
 
-async function flyTo(place: GeoResult) {
+/**
+ * Lleva el ovni a la ciudad: mientras se cargan los lugares arranca motores en el menú, después vuela
+ * con la cámara hasta su posición sobre la ciudad (Cesium precarga las teselas del destino durante el
+ * vuelo) y al llegar espera, como mucho unos segundos, a que terminen de cargar los edificios.
+ */
+async function flyTo(place: GeoResult): Promise<number> {
   paused = true;
   closePanels();
   pois.clear();
   ads.clear();
-  const placesStep = document.querySelector('#loading-steps [data-step="places"]')!;
-  placesStep.lastChild!.textContent = edition ? 'Buscando lugares de interés' : 'Buscando lugares de interés y negocios';
-  $('city-name').textContent = $('drawer-city').textContent = $('loading-city').textContent = $('finder-city').textContent = place.name;
-  document.querySelectorAll<HTMLElement>('#loading-steps li').forEach((li) => {
-    li.className = '';
-    li.querySelector('.step-icon')!.innerHTML = '';
-  });
-  $('tiles-progress').textContent = '';
-  setProgress(0);
-  $('loading').hidden = false;
+  document.body.classList.remove('flying');
+  $('city-name').textContent = $('drawer-city').textContent = $('finder-city').textContent = place.name;
+  launchStatus('Arrancando motores…');
+  intro.warmup();
 
-  // Los lugares se piden a la vez que se coloca la cámara y se mide el terreno.
-  // Edición de ciudad: los lugares del ayuntamiento y sin anuncios. General: Wikipedia y anunciantes a la vez.
+  // Lugares, anunciantes y altura del suelo a la vez; como mínimo 1,8 s de arranque y como máximo 9 s de espera.
   const places = edition ? loadEditionPois(edition) : loadCityPois(place.lat, place.lng);
   const sponsors = edition ? Promise.resolve([]) : loadSponsors(place.lat, place.lng);
   const advertisers = edition ? Promise.resolve([]) : loadAdvertisers(place.lat, place.lng);
-  places.catch(() => {}); // se gestiona más abajo
-
-  step('city', 'active');
-  ufo.teleport(place.lat, place.lng, 0, CITY_ALTITUDE);
-  ufo.render(0);
-  const ground = await Promise.race([groundHeight(world, place.lat, place.lng), timeout(8000, 0)]);
-  ufo.teleport(place.lat, place.lng, ground, CITY_ALTITUDE);
-  ufo.render(0);
-  step('city', 'done');
-  setProgress(0.15);
-
-  step('places', 'active');
-  try {
-    pois.add(await places);
-    step('places', 'done');
-  } catch {
-    step('places', 'fail');
-  }
-  try {
-    pois.add(await sponsors);
-  } catch { /* sin patrocinadores */ }
-  await ads.add(await advertisers, ufo.excluded);
-  setProgress(0.35);
-
-  step('tiles', 'active');
-  await loadTiles(world, (f) => {
-    setProgress(0.35 + 0.65 * f);
-    $('tiles-progress').textContent = `${Math.round(f * 100)} %`;
+  const ground = Promise.race([groundHeight(world, place.lat, place.lng), timeout(8000, 0)]);
+  const city = place;
+  const addPlaces = (list: Poi[]) => { if (currentCity === city) pois.add(list); };
+  const data = Promise.all([places.then(addPlaces), sponsors.then(addPlaces)]).catch(() => {
+    if (currentCity === city) toast({ title: 'No se pudieron cargar los lugares de interés', iconName: 'warning' });
   });
-  step('tiles', 'done');
-  setProgress(1);
+  await Promise.all([timeout(1800, 0), Promise.race([Promise.all([data, ground]), timeout(9000, 0)])]);
+  if (currentCity !== city) return 0;
+
+  ufo.teleport(place.lat, place.lng, await Promise.race([ground, timeout(0, 0)]), CITY_ALTITUDE);
+  ufo.heading = 0;
+  launchStatus(`Rumbo a ${place.name}`);
+  await intro.fly(ufo.lat, ufo.lng, ufo.height, ufo.chaseView);
+  if (currentCity !== city) return 0;
+  intro.stop();
+  ufo.snapCamera();
   updateHud();
-  await timeout(350, 0);
-  $('loading').hidden = true;
+  const adList = await advertisers.catch(() => []);
+  // Ya se puede jugar; los últimos edificios y los anunciantes terminan de cargar mientras tanto.
+  void (async () => {
+    launchStatus('Cargando la ciudad…');
+    await ads.add(adList, ufo.excluded);
+    if (currentCity !== city) return;
+    await loadTiles(world, (f) => currentCity === city && launchStatus(`Cargando la ciudad ${Math.round(f * 100)} %`), 6000);
+    if (currentCity === city) launchStatus('');
+  })();
+  return adList.length;
 }
 
 // ---------- Viajar a un lugar (teletransporte) ----------
@@ -1032,4 +1037,4 @@ viewer.scene.postRender.addEventListener(() => {
 });
 
 // Acceso para depuración en desarrollo (no se incluye en la web publicada).
-if (import.meta.env.DEV) Object.assign(window, { flyfly: { ufo, pois, ads, goHome, startFlight, openSheet, travelTo, showVictory, startAutopilot } });
+if (import.meta.env.DEV) Object.assign(window, { flyfly: { ufo, pois, ads, intro, goHome, startFlight, openSheet, travelTo, showVictory, startAutopilot } });

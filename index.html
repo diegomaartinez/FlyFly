@@ -114,7 +114,7 @@
     <section>
       <h3 id="drawer-grid-title">Descubiertos</h3>
       <div id="drawer-grid" class="place-grid"></div>
-      <p id="drawer-empty" class="empty">Todavía no has descubierto ningún lugar. Sigue la flecha y los haces de luz naranjas.</p>
+      <p id="drawer-empty" class="empty">Todavía no has descubierto ningún lugar. Sigue la brújula y busca las interrogaciones naranjas.</p>
     </section>
   </aside>
 
@@ -214,19 +214,8 @@
     </div>
   </div>
 
-  <!-- Pantalla de carga -->
-  <div id="loading" class="screen screen-loading" hidden>
-    <div class="loading-card">
-      <span class="brand-mark brand-mark-lg" data-icon="ufo"></span>
-      <h2>Volando a <span id="loading-city"></span></h2>
-      <div class="progress"><i id="loading-progress"></i></div>
-      <ol id="loading-steps">
-        <li data-step="city"><span class="step-icon"></span>Localizando la ciudad</li>
-        <li data-step="places"><span class="step-icon"></span>Buscando lugares de interés</li>
-        <li data-step="tiles"><span class="step-icon"></span>Cargando edificios y terreno <span id="tiles-progress" class="muted"></span></li>
-      </ol>
-    </div>
-  </div>
+  <!-- Despegue (la animación del ovni hace de pantalla de carga) -->
+  <div id="launch" class="launch" role="status" hidden><span class="launch-dot"></span><span id="launch-text"></span></div>
 
   <!-- Inicio -->
   <div id="intro" class="screen screen-intro">

@@ -1,6 +1,5 @@
 import {
-  ArcType, Cartesian2, Cartesian3, Cartographic, Color, DistanceDisplayCondition, Entity, PolylineGlowMaterialProperty,
-  SceneTransforms, CesiumWidget,
+  Cartesian2, Cartesian3, Cartographic, SceneTransforms, CesiumWidget,
 } from '@cesium/engine';
 import { icon } from './icons';
 import { validHeight } from './world';
@@ -101,20 +100,19 @@ export async function fetchImageCredit(imageUrl: string): Promise<ImageCredit | 
 
 // ---------- Descubrimiento y marcadores ----------
 
-const REVEAL_DISTANCE = 1200; // aparece el marcador "?"
-const NEAR_DISTANCE = 500; // se convierte en tarjeta con la foto desenfocada
+// Los lugares por descubrir solo se ven como un "?" naranja (sin haz de luz ni tarjeta) hasta llegar a ellos.
+const REVEAL_DISTANCE = 2000; // aparece el marcador "?"
 const DISCOVER_DISTANCE = 50; // se descubre (hay que llegar al sitio)
 const SPONSOR_VISIBLE = 3000; // los patrocinados se ven desde más lejos
 const COMPACT_DISTANCE = 700; // más allá, la tarjeta se reduce a una píldora
 const MARKER_HEIGHT = 35; // metros sobre el suelo o el tejado
-const BEAM_HEIGHT = 220; // haz de luz de los lugares sin descubrir
 const STORAGE_KEY = 'flyfly:discovered';
 
 /** Qué lugares ya descubiertos se muestran en el mapa (Ajustes). */
 export type FoundVisibility = 'todos' | 'cercanos' | 'ninguno';
 const FOUND_VISIBLE: Record<FoundVisibility, number> = { todos: Infinity, cercanos: 400, ninguno: -1 };
 
-type State = 'hidden' | 'mystery' | 'near' | 'found';
+type State = 'hidden' | 'mystery' | 'found';
 
 interface Marker {
   poi: Poi;
@@ -124,7 +122,6 @@ interface Marker {
   sampling?: boolean;
   anchor?: Cartesian3;
   el?: HTMLButtonElement;
-  beam?: Entity;
 }
 
 function loadDiscovered(): Set<string> {
@@ -142,8 +139,8 @@ export function formatDistance(m: number) {
 export class PoiLayer {
   readonly pois = new Map<string, Poi>();
   readonly discovered = loadDiscovered();
-  /** Haces de luz: no deben contar como "suelo" al medir alturas. */
-  readonly excluded: Entity[] = [];
+  /** Objetos que no deben contar como "suelo" al medir alturas (ahora ninguno: ya no hay haces de luz). */
+  readonly excluded: object[] = [];
   /** Clic en un marcador. */
   onSelect?: (poi: Poi) => void;
   /** Visibilidad de los lugares descubiertos. */
@@ -159,7 +156,6 @@ export class PoiLayer {
   clear() {
     for (const m of this.markers.values()) {
       m.el?.remove();
-      if (m.beam) this.viewer.entities.remove(m.beam);
     }
     this.markers.clear();
     this.pois.clear();
@@ -219,7 +215,6 @@ export class PoiLayer {
       let state: State = 'hidden';
       if (discovered) state = m.dist < FOUND_VISIBLE[this.foundVisibility] ? 'found' : 'hidden';
       else if (poi.sponsor) state = m.dist < SPONSOR_VISIBLE ? 'found' : 'hidden';
-      else if (m.dist < NEAR_DISTANCE) state = 'near';
       else if (m.dist < REVEAL_DISTANCE) state = 'mystery';
       this.setState(m, state);
 
@@ -233,7 +228,6 @@ export class PoiLayer {
     if (state === 'hidden') {
       m.el?.remove();
       m.el = undefined;
-      if (m.beam) m.beam.show = false;
       return;
     }
     const discovered = this.isDiscovered(m.poi);
@@ -249,21 +243,14 @@ export class PoiLayer {
 
     const title = el.querySelector('b')!;
     const sub = el.querySelector('small')!;
-    if (state === 'near') {
-      title.textContent = 'Lugar por descubrir';
-      sub.textContent = `A ${formatDistance(m.dist)}`;
-    } else if (state === 'found') {
+    if (state === 'found') {
       title.textContent = m.poi.name;
       sub.textContent = m.poi.sponsor ? 'Patrocinado' : m.poi.description ?? '';
     }
-    // La foto solo se descarga al acercarse (no para los "?" lejanos).
+    // La foto solo se descarga al descubrirlo (no para los "?").
     const img = el.querySelector('img')!;
-    if (state !== 'mystery' && m.poi.thumb && img.getAttribute('src') !== m.poi.thumb) img.src = m.poi.thumb;
+    if (state === 'found' && m.poi.thumb && img.getAttribute('src') !== m.poi.thumb) img.src = m.poi.thumb;
     el.setAttribute('aria-label', state === 'found' ? m.poi.name : 'Lugar por descubrir');
-
-    // Haz de luz para localizar desde lejos los lugares aún sin descubrir.
-    if (!discovered && m.ground !== undefined) this.ensureBeam(m);
-    if (m.beam) m.beam.show = !discovered;
   }
 
   private createElement(m: Marker): HTMLButtonElement {
@@ -281,25 +268,6 @@ export class PoiLayer {
     el.addEventListener('click', () => this.onSelect?.(m.poi));
     this.container.append(el);
     return el;
-  }
-
-  private ensureBeam(m: Marker) {
-    if (m.beam || m.ground === undefined) return;
-    const { lng, lat } = m.poi;
-    m.beam = this.viewer.entities.add({
-      polyline: {
-        positions: Cartesian3.fromDegreesArrayHeights([lng, lat, m.ground, lng, lat, m.ground + BEAM_HEIGHT]),
-        width: 14,
-        arcType: ArcType.NONE,
-        material: new PolylineGlowMaterialProperty({
-          color: Color.fromCssColorString(m.poi.sponsor ? '#f0b43c' : '#e8683b').withAlpha(0.9),
-          glowPower: 0.22,
-          taperPower: 0.6,
-        }),
-        distanceDisplayCondition: new DistanceDisplayCondition(0, SPONSOR_VISIBLE),
-      },
-    });
-    this.excluded.push(m.beam);
   }
 
   /** Altura del suelo/tejado bajo el lugar (asíncrona, como mucho dos a la vez). */

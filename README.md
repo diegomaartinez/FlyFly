@@ -12,12 +12,12 @@
 
 FlyFly te pone a los mandos de un ovni sobre ciudades reales en 3D. Edificios, calles, playas y monumentos tal y como son, vistos desde el aire con la misma calidad que Google Earth.
 
-Los lugares más interesantes de la ciudad están escondidos. Un haz de luz y una brújula te guían hasta ellos; al acercarte, el marcador se convierte en una tarjeta con la foto y el nombre del sitio. Encuéntralos todos y descubre su historia antes de visitarlos en persona.
+Los lugares más interesantes de la ciudad están escondidos. Una brújula te guía y, al acercarte, verás su marcador naranja con una interrogación; cuando llegas, se convierte en una tarjeta con la foto y el nombre del sitio. Encuéntralos todos y descubre su historia antes de visitarlos en persona.
 
 ## ¿Qué puedes hacer?
 
-- 🌍 **Volar sobre cualquier ciudad del mundo en 3D**: escribe su nombre y despega.
-- 🎯 **Encontrar lugares escondidos**: monumentos, museos, playas, miradores y rincones con historia. Una brújula y haces de luz te dan pistas de hacia dónde volar.
+- 🌍 **Volar sobre cualquier ciudad del mundo en 3D**: escribe su nombre, despega y tu ovni viajará desde el espacio hasta ella.
+- 🎯 **Encontrar lugares escondidos**: monumentos, museos, playas, miradores y rincones con historia. Una brújula te indica hacia dónde volar y su distancia.
 - 🔎 **Buscar como en un mapa**: escribe «cafeterías», «hoteles» o «museos» y verás los locales de la ciudad con su foto, descripción y enlace. Un toque y vuelas hasta ellos.
 - 🎈 **Negocios en el cielo**: tiendas, restaurantes y particulares se anuncian con su propio lugar, un globo aerostático, un ovni gigante o una avioneta con pancarta.
 - 📖 **Conocer cada lugar**: al descubrirlo se abre una ficha con foto, descripción y enlace a Wikipedia.

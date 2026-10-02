@@ -6,6 +6,7 @@
 import { balloonParts, BANNER_FONT, box, hexToRgb, merge, Mesh, Part, planeParts, RGB } from './models';
 
 type AdType = 'lugar' | 'globo' | 'ovni' | 'avioneta';
+export interface PreviewExtra { color2?: string; basket?: string; banner?: string; bannerColor?: string }
 type Mat = Float32Array;
 
 interface Gpu { pos: WebGLBuffer; nor: WebGLBuffer; idx: WebGLBuffer; count: number; type: number; color: RGB; alpha: number; emissive: RGB; uv?: WebGLBuffer; tex?: WebGLTexture }
@@ -118,7 +119,8 @@ export class AdPreview3D {
   private aPos: number;
   private aNor: number;
   private aUV: number;
-  private banner = '';
+  private extra: PreviewExtra = {};
+  private key = '';
   private parts: Gpu[] = [];
   private ground: Gpu;
   private city: Gpu;
@@ -160,11 +162,14 @@ export class AdPreview3D {
     new IntersectionObserver(([e]) => { this.visible = e.isIntersecting; if (this.visible) this.loop(); }).observe(canvas);
   }
 
-  set(type: AdType, color: string, banner = '') {
-    const changed = type !== this.type || color !== this.color || (type === 'avioneta' && banner !== this.banner);
+  /** Tipo, color principal y extras (globo: segundo color y cesta; avioneta: texto y color de la pancarta). */
+  set(type: AdType, color: string, extra: PreviewExtra = {}) {
+    const key = JSON.stringify([type, color, type === 'ovni' || type === 'lugar' ? {} : extra]);
+    const changed = key !== this.key;
+    this.key = key;
     this.type = type;
     this.color = color;
-    this.banner = banner;
+    this.extra = extra;
     if (changed || !this.parts.length) this.build();
   }
 
@@ -201,12 +206,13 @@ export class AdPreview3D {
       color: p.color, alpha: 1, emissive: p.emissive ?? [0, 0, 0],
       uvs: p.mesh.uvs && new Float32Array(p.mesh.uvs), texture: p.texture,
     }));
-    if (this.type === 'globo') this.parts = fromParts(balloonParts(this.color));
+    const { color2, basket, banner = '', bannerColor } = this.extra;
+    if (this.type === 'globo') this.parts = fromParts(balloonParts(this.color, color2, basket));
     else if (this.type === 'avioneta') {
-      const key = this.banner + this.color;
+      const key = this.key;
       await document.fonts?.load(BANNER_FONT).catch(() => undefined);
-      if (this.type !== 'avioneta' || key !== this.banner + this.color) return;
-      this.parts = fromParts(planeParts(this.color, this.banner));
+      if (key !== this.key) return;
+      this.parts = fromParts(planeParts(this.color, banner, bannerColor));
     }
     else if (this.type === 'ovni') {
       const type = this.type;
@@ -247,9 +253,9 @@ export class AdPreview3D {
       eye = [0, 22, 80]; target = [0, 0, 0]; top = [0, 10, 0];
     } else if (this.type === 'avioneta') {
       // Vuelta completa cada 14 s alrededor del centro, inclinada hacia dentro del giro.
-      const R = 38, a = t * ((Math.PI * 2) / 14), x = R * Math.cos(a), z = R * Math.sin(a);
-      model = mul(translate(x, 0, z), mul(rotY(-a), mul(rotZ(0.3), scale(2.5))));
-      eye = [0, 38, 105]; target = [0, -8, 0]; top = [x, 7, z];
+      const R = 30, a = t * ((Math.PI * 2) / 14), x = R * Math.cos(a), z = R * Math.sin(a);
+      model = mul(translate(x, 0, z), mul(rotY(-a), mul(rotZ(0.3), scale(1.8))));
+      eye = [0, 40, 118]; target = [0, -12, 0]; top = [x, 13, z];
     } else {
       eye = [0, GROUND_Y + 55, 120]; target = [0, GROUND_Y + 22, 0];
     }

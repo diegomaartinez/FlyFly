@@ -130,8 +130,14 @@ $('ad-search').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.p
 const preview = $('preview');
 const preview3d = AdPreview3D.create($<HTMLCanvasElement>('preview-3d'), preview);
 function renderPreview() {
-  preview3d?.set(type, $<HTMLInputElement>('ad-color').value, value('ad-banner') || value('ad-name'));
+  preview3d?.set(type, $<HTMLInputElement>('ad-color').value, {
+    color2: value('ad-color2'), basket: value('ad-basket'), banner: value('ad-banner') || value('ad-name'), bannerColor: value('ad-banner-color'),
+  });
   $('ad-banner-field').hidden = type !== 'avioneta';
+  // Colores según el tipo: el principal cambia de nombre y el globo y la avioneta tienen colores extra.
+  $('ad-color-label').textContent = { lugar: 'Color de tu recuadro', globo: 'Color principal del globo', ovni: 'Color del ovni', avioneta: 'Color de la avioneta' }[type];
+  $('ad-extra-colors').hidden = type !== 'globo' && type !== 'avioneta';
+  document.querySelectorAll<HTMLElement>('#ad-extra-colors [data-for]').forEach((f) => (f.hidden = f.dataset.for !== type));
   const name = $<HTMLInputElement>('ad-name').value.trim();
   $('preview-name').textContent = name || 'Tu negocio';
   preview.style.setProperty('--brand', $<HTMLInputElement>('ad-color').value);
@@ -140,7 +146,7 @@ function renderPreview() {
   if (photos.length) img.src = URL.createObjectURL(photos[0]);
   $('ad-text-count').textContent = String($<HTMLTextAreaElement>('ad-text').value.length);
 }
-['ad-name', 'ad-text', 'ad-color', 'ad-banner'].forEach((id) => $(id).addEventListener('input', renderPreview));
+['ad-name', 'ad-text', 'ad-color', 'ad-banner', 'ad-color2', 'ad-basket', 'ad-banner-color'].forEach((id) => $(id).addEventListener('input', renderPreview));
 
 const swatches = $('ad-swatches');
 for (const c of COLORS) {
@@ -196,6 +202,9 @@ function buildEntry() {
     color: value('ad-color'), description: value('ad-desc') || undefined, text: value('ad-text') || undefined,
     tags: value('ad-tags').split(',').map((t) => t.trim()).filter(Boolean),
     banner: type === 'avioneta' ? value('ad-banner') || undefined : undefined,
+    bannerColor: type === 'avioneta' ? value('ad-banner-color') : undefined,
+    color2: type === 'globo' ? value('ad-color2') : undefined,
+    basket: type === 'globo' ? value('ad-basket') : undefined,
     images: photos.map((f, i) => `anunciantes/${id}-${i + 1}.${f.type.split('/')[1].replace('jpeg', 'jpg')}`),
     link: value('ad-link') || undefined, cta: value('ad-cta'), until: until.toISOString().slice(0, 10),
   };

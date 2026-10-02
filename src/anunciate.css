@@ -24,6 +24,9 @@ html:has(body.ad-page) { height: auto; overflow: auto; }
 .field textarea { resize: vertical; }
 .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--accent); }
 .field input[type='color'] { width: 56px; padding: 4px; }
+.extra-colors .field { grid-template-columns: auto 1fr; align-items: center; }
+.extra-colors .field label { order: 2; }
+.extra-colors[hidden], .extra-colors .field[hidden] { display: none; }
 .field input[type='file'] { padding: 10px; }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .ad-step .search-row { display: flex; gap: 8px; }

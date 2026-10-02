@@ -71,9 +71,9 @@ Formas de aparecer (`type`):
 | Tipo | Se ve como |
 |---|---|
 | `lugar` | Tarjeta con foto a 35 m sobre el suelo, como los lugares de turismo |
-| `globo` | Globo aerostático del color elegido a 160 m, balanceándose |
+| `globo` | Globo aerostático (×2,2) con gajos de dos colores y cesta de un tercero, a 160 m, balanceándose |
 | `ovni` | Ovni 3 veces mayor que el del jugador, teñido del color elegido, girando a 120 m |
-| `avioneta` | Avioneta del color elegido con pancarta, dando vueltas de 350 m de radio a 220 m |
+| `avioneta` | Avioneta (×3) del color elegido con una pancarta de 17 × 5 m de otro color, dando vueltas de 350 m de radio a 220 m |
 
 Los modelos del globo y la avioneta se generan en el navegador con el color de cada anunciante (`src/models.ts`). La pancarta lleva el texto de `banner` (o el nombre) dibujado en un canvas y añadido al GLB como textura. Todas las etiquetas muestran «Patrocinado» y un borde del color elegido.
 
@@ -87,7 +87,9 @@ Formato de `public/data/anunciantes.json`:
     "description": "Vistas al mar en pleno centro", "text": "Texto de la ficha",
     "images": ["anunciantes/hotel-atlantico-1.jpg"],
     "link": "https://ejemplo.com", "cta": "Reservar", "until": "2026-12-31",
-    "tags": ["hotel", "alojamiento"], "pagado": 12, "banner": "Solo avioneta: texto de la pancarta"
+    "tags": ["hotel", "alojamiento"], "pagado": 12,
+    "color2": "#ffffff", "basket": "#6b4226",
+    "banner": "Solo avioneta: texto", "bannerColor": "#ffffff"
   }
 ]
 ```
@@ -101,18 +103,27 @@ Formato de `public/data/anunciantes.json`:
 
 Para publicar una solicitud descargada: `node scripts/importar-anuncio.mjs solicitud-flyfly-xxx.json` (guarda las fotos en `public/anunciantes/` y añade el anuncio a `anunciantes.json`).
 
+## Menú principal y despegue (`src/intro.ts`)
+
+En el menú la Tierra gira despacio y el ovni llega desde lejos y se queda a la derecha (se coloca cada fotograma respecto a la cámara). Al despegar:
+
+1. **Arranque de motores** (mínimo 1,8 s, máximo 9 s): el ovni vibra, gira rápido y destella mientras se piden los lugares, los anunciantes y la altura del suelo.
+2. **Vuelo** (5 s, 6,5 s desde el espacio): `camera.flyTo` hasta la posición de juego sobre la ciudad a 500 m, con el ovni pasando de la derecha al centro. Cesium precarga las teselas del destino durante el vuelo (`preloadFlightDestinations`).
+3. **Llegada**: el juego toma el control y los últimos edificios y los anunciantes terminan de cargar mientras se vuela (aviso «Cargando la ciudad» abajo).
+
+Con «reducir movimiento» del sistema no hay vibración ni giro de la Tierra y el vuelo dura 1,5 s.
+
 ## Mecánica de juego
 
 Al elegir una ciudad se cargan de golpe hasta 80 lugares de Wikipedia (centro + anillo de 3,5 km), así el recuento es fijo. Cada lugar pasa por estos estados (`src/pois.ts`):
 
 | Distancia al ovni | Estado | Se ve |
 |---|---|---|
-| > 1,2 km | oculto | nada (solo la brújula) |
-| 1,2 km - 500 m | misterio | marcador "?" + haz de luz naranja |
-| 500 - 50 m | cerca | tarjeta con la foto desenfocada y la distancia |
+| > 2 km | oculto | nada (solo la brújula) |
+| 2 km - 50 m | misterio | solo el marcador "?" naranja |
 | < 50 m | descubierto | tarjeta con foto, nombre y descripción (píldora compacta a más de 700 m) |
 
-Los marcadores son elementos HTML (`#markers`) que se recolocan en cada fotograma con `SceneTransforms.worldToWindowCoordinates`; su altura se mide con `sampleHeightMostDetailed` (35 m sobre el suelo o el tejado). Los haces de luz son polilíneas de Cesium y se excluyen al medir alturas.
+Los marcadores son elementos HTML (`#markers`) que se recolocan en cada fotograma con `SceneTransforms.worldToWindowCoordinates`; su altura se mide con `sampleHeightMostDetailed` (35 m sobre el suelo o el tejado).
 
 Los descubiertos se muestran según Ajustes: cercanos (menos de 400 m, por defecto), todos o ninguno (`PoiLayer.foundVisibility`).
 
@@ -151,7 +162,8 @@ Para que la ciudad cargue antes, lo lejano se pide con muy poco detalle: niebla 
 ```
 src/world.ts    visor Cesium, modo de teselas, calidad y geocodificación
 src/flight.ts   control del ovni y cámaras
-src/pois.ts     lugares de Wikipedia, descubrimiento, marcadores HTML y haces de luz
+src/pois.ts     lugares de Wikipedia, descubrimiento y marcadores HTML
+src/intro.ts    menú principal animado (la Tierra girando, el ovni) y vuelo desde el espacio hasta la ciudad
 src/main.ts     interfaz (inicio, carga, ficha, menú, ajustes), controles y bucle principal
 src/geoid.ts    altitud sobre el nivel del mar (geoide EGM96)
 src/icons.ts    iconos Phosphor usados en la interfaz

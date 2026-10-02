@@ -89,7 +89,7 @@ export class Craft {
     return this.model ? [this.model] : [];
   }
 
-  /** `exclude`: objetos que no cuentan como suelo además del ovni (p. ej. los haces de luz). */
+  /** `exclude`: objetos que no cuentan como suelo además del ovni (p. ej. otros modelos). */
   sampleGround(exclude: object[] = []) {
     const scene = this.viewer.scene;
     const carto = scene.globe.ellipsoid.cartesianToCartographic(this.position);
@@ -143,6 +143,22 @@ export class Craft {
   /** Oculta el ovni (al volver al menú principal). */
   hide() {
     if (this.model) this.model.show = false;
+  }
+
+  /** Modelo 3D del ovni (para la animación del menú principal). */
+  get mesh(): Model | undefined {
+    return this.model;
+  }
+
+  /** Posición de la cámara de persecución al llegar a una ciudad (para volar hasta ella desde el menú). */
+  get chaseView() {
+    return { heading: this.heading, pitch: this.camPitch, range: this.camRange };
+  }
+
+  /** Coloca la cámara de persecución sin suavizado (al terminar el vuelo desde el menú). */
+  snapCamera() {
+    this.camHeading = this.heading;
+    this.render(0);
   }
 
   toggleCamera() {

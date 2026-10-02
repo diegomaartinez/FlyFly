@@ -34,7 +34,15 @@ export interface Advertiser {
   pagado?: number;
   /** Texto de la pancarta de la avioneta (si falta, el nombre). */
   banner?: string;
+  /** Color de la pancarta de la avioneta (por defecto, blanca). */
+  bannerColor?: string;
+  /** Globo: color de los gajos alternos (por defecto, blanco) y de la cesta. */
+  color2?: string;
+  basket?: string;
 }
+
+/** Color #rrggbb válido o undefined (para usar el de por defecto). */
+const hex = (c?: string) => (c && /^#[0-9a-f]{6}$/i.test(c) ? c : undefined);
 
 const LABEL_DISTANCE = 3000; // las etiquetas se ven desde 3 km
 const RADIUS = 8000; // anunciantes a menos de 8 km del centro de la ciudad
@@ -118,10 +126,10 @@ export class AdvertiserLayer {
         phase: Math.random() * Math.PI * 2, anchor: new Cartesian3(),
       };
       try {
-        if (ad.type === 'globo') item.model = await Model.fromGltfAsync({ url: balloonUrl(color), scale: 1.5 });
+        if (ad.type === 'globo') item.model = await Model.fromGltfAsync({ url: balloonUrl(color, hex(ad.color2), hex(ad.basket)), scale: 2.2 });
         if (ad.type === 'avioneta') {
           await document.fonts?.load(BANNER_FONT).catch(() => undefined);
-          item.model = await Model.fromGltfAsync({ url: planeUrl(color, ad.banner || ad.name), scale: 2 });
+          item.model = await Model.fromGltfAsync({ url: planeUrl(color, ad.banner || ad.name, hex(ad.bannerColor)), scale: 3 });
         }
         if (ad.type === 'ovni') {
           item.model = await Model.fromGltfAsync({
@@ -164,7 +172,7 @@ export class AdvertiserLayer {
       const { ad } = it;
       const t = this.time + it.phase;
       let lat = ad.lat, lng = ad.lng, height = it.ground, labelUp = 35;
-      if (ad.type === 'globo') { height += 160 + Math.sin(t * 0.4) * 6; labelUp = 40; }
+      if (ad.type === 'globo') { height += 160 + Math.sin(t * 0.4) * 6; labelUp = 56; }
       if (ad.type === 'ovni') { height += 120 + Math.sin(t * 1.2) * 3; labelUp = 22; }
       let heading = 0, roll = 0;
       if (ad.type === 'avioneta') {
@@ -175,7 +183,7 @@ export class AdvertiserLayer {
         height += 220;
         heading = a + Math.PI / 2; // tangente al círculo
         roll = 0.3; // inclinada hacia el centro del giro
-        labelUp = 12;
+        labelUp = 16;
       }
       const pos = Cartesian3.fromDegrees(lng, lat, height);
       if (it.model) {
