@@ -1,4 +1,4 @@
-// Página "Anúnciate": solicitud de anuncio para el modo recreativo.
+// Página "Anúnciate": solicitud de anuncio.
 import '@fontsource-variable/outfit';
 import 'leaflet/dist/leaflet.css';
 import './style.css';
@@ -9,13 +9,19 @@ import { hydrateIcons } from './icons';
 import { AdPreview3D } from './preview3d';
 
 type AdType = 'lugar' | 'globo' | 'ovni' | 'avioneta';
-interface Tarifa { nombre: string; descripcion: string; precioMes?: number; precio?: string; limite?: number; pago?: string }
+interface Tarifa { nombre: string; descripcion: string; precioMes?: number; precio?: string; pago?: string }
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 hydrateIcons();
 
-/** Dónde llegan las solicitudes (p. ej. Formspree). Sin configurar, se envían por email o se descargan. */
-const FORM_ENDPOINT: string | undefined = import.meta.env.VITE_FORM_ENDPOINT || undefined;
+/**
+ * Dónde llegan las solicitudes. Por defecto, al email de la web (titular.js) a través de FormSubmit,
+ * que no necesita cuenta. Con VITE_FORM_ENDPOINT se usa otro servicio (Formspree, Web3Forms…).
+ * Si el envío falla, se ofrece mandarla por email y descargarla.
+ */
+const OWNER_EMAIL = ((window as any).TITULAR?.email as string | undefined)?.trim();
+const FORM_ENDPOINT: string | undefined = import.meta.env.VITE_FORM_ENDPOINT
+  || (OWNER_EMAIL && /^[^@\s\[]+@[^@\s]+\.[^@\s\]]+$/.test(OWNER_EMAIL) ? `https://formsubmit.co/ajax/${OWNER_EMAIL}` : undefined);
 const MAX_PHOTOS = 3;
 const MAX_BYTES = 2 * 1024 * 1024;
 const COLORS = ['#e2602f', '#d6336c', '#7048e8', '#1c7ed6', '#0ca678', '#f08c00', '#212529'];
@@ -48,11 +54,10 @@ async function loadTarifas() {
     b.type = 'button';
     b.setAttribute('role', 'radio');
     b.dataset.type = id;
-    b.innerHTML = '<b></b><small></small><span class="price"></span><span class="limit"></span>';
+    b.innerHTML = '<b></b><small></small><span class="price"></span>';
     b.querySelector('b')!.textContent = t.nombre;
     b.querySelector('small')!.textContent = t.descripcion;
     b.querySelector('.price')!.textContent = priceText(t);
-    b.querySelector('.limit')!.textContent = t.limite ? `Plazas limitadas: ${t.limite} por ciudad` : '';
     b.onclick = () => { type = id; renderType(); };
     box.append(b);
   }
@@ -125,7 +130,8 @@ $('ad-search').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.p
 const preview = $('preview');
 const preview3d = AdPreview3D.create($<HTMLCanvasElement>('preview-3d'), preview);
 function renderPreview() {
-  preview3d?.set(type, $<HTMLInputElement>('ad-color').value);
+  preview3d?.set(type, $<HTMLInputElement>('ad-color').value, value('ad-banner') || value('ad-name'));
+  $('ad-banner-field').hidden = type !== 'avioneta';
   const name = $<HTMLInputElement>('ad-name').value.trim();
   $('preview-name').textContent = name || 'Tu negocio';
   preview.style.setProperty('--brand', $<HTMLInputElement>('ad-color').value);
@@ -134,7 +140,7 @@ function renderPreview() {
   if (photos.length) img.src = URL.createObjectURL(photos[0]);
   $('ad-text-count').textContent = String($<HTMLTextAreaElement>('ad-text').value.length);
 }
-['ad-name', 'ad-text', 'ad-color'].forEach((id) => $(id).addEventListener('input', renderPreview));
+['ad-name', 'ad-text', 'ad-color', 'ad-banner'].forEach((id) => $(id).addEventListener('input', renderPreview));
 
 const swatches = $('ad-swatches');
 for (const c of COLORS) {
@@ -188,6 +194,8 @@ function buildEntry() {
   return {
     id, name: value('ad-name'), type, lat: +point!.lat.toFixed(6), lng: +point!.lng.toFixed(6),
     color: value('ad-color'), description: value('ad-desc') || undefined, text: value('ad-text') || undefined,
+    tags: value('ad-tags').split(',').map((t) => t.trim()).filter(Boolean),
+    banner: type === 'avioneta' ? value('ad-banner') || undefined : undefined,
     images: photos.map((f, i) => `anunciantes/${id}-${i + 1}.${f.type.split('/')[1].replace('jpeg', 'jpg')}`),
     link: value('ad-link') || undefined, cta: value('ad-cta'), until: until.toISOString().slice(0, 10),
   };
@@ -225,12 +233,16 @@ $('ad-form').addEventListener('submit', async (e) => {
   let sent = false;
   if (FORM_ENDPOINT) {
     const form = new FormData();
+    form.append('_subject', `Anuncio FlyFly: ${entry.name} (${type})`);
+    form.append('_template', 'table');
+    form.append('_captcha', 'false');
     form.append('anuncio', JSON.stringify(entry, null, 2));
     Object.entries(contact).forEach(([k, v]) => form.append(k, v));
     photos.forEach((f, i) => form.append(`foto${i + 1}`, f, entry.images[i].split('/').pop()));
     try {
       const res = await fetch(FORM_ENDPOINT, { method: 'POST', body: form, headers: { Accept: 'application/json' } });
-      sent = res.ok;
+      const data = await res.json().catch(() => ({}));
+      sent = res.ok && String(data.success) !== 'false';
     } catch { /* se ofrece el envío por email */ }
   }
   submit.disabled = false;

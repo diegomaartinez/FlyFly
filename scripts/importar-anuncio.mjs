@@ -24,6 +24,11 @@ fotos.forEach((dataUrl, i) => {
 const listPath = new URL('data/anunciantes.json', root);
 const list = existsSync(listPath) ? JSON.parse(readFileSync(listPath, 'utf8')) : [];
 const clean = Object.fromEntries(Object.entries(anuncio).filter(([, v]) => v !== undefined && v !== ''));
+// Importe mensual para ordenar el buscador: el precio de su tipo si no se indica otro (edítalo si cobraste distinto).
+if (clean.pagado == null) {
+  const tarifas = JSON.parse(readFileSync(new URL('data/tarifas.json', root), 'utf8'));
+  clean.pagado = tarifas.tipos?.[clean.type]?.precioMes ?? 0;
+}
 const i = list.findIndex((a) => a.id === clean.id);
 if (i >= 0) list[i] = clean;
 else list.push(clean);

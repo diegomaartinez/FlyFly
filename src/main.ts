@@ -7,6 +7,8 @@ import { hydrateIcons, icon, IconName } from './icons';
 import { adsEnabled, manageConsent, showAd } from './ads';
 import { AdvertiserLayer, loadAdvertisers } from './advertisers';
 import { track } from './analytics';
+import { CITY_ID, loadEdition, loadEditionPois } from './edition';
+import { searchPlaces, SUGGESTIONS } from './finder';
 import { bearing, distance, fetchImageCredit, fetchSummary, formatDistance, FoundVisibility, loadCityPois, loadSponsors, Poi, PoiLayer, wikiUrl } from './pois';
 import { createWorld, geocode, GeoResult, groundHeight, initialQuality, Quality, setQuality, World } from './world';
 // Sonido desactivado (para reactivarlo, descomenta las líneas marcadas con "Sonido").
@@ -36,14 +38,13 @@ let flying = false;
 let paused = true;
 let currentCity: GeoResult | undefined;
 
-// Modo de juego: turismo (lugares de Wikipedia por descubrir) o recreativo (negocios y anunciantes).
-type Mode = 'turismo' | 'recreativo';
-const MODE_KEY = 'flyfly:mode';
-let mode: Mode = (() => {
-  try { return localStorage.getItem(MODE_KEY) === 'recreativo' ? 'recreativo' : 'turismo'; } catch { return 'turismo'; }
-})();
-/** Modo de la ciudad que se está sobrevolando (el del menú cuando se eligió la ciudad). */
-let flightMode: Mode = mode;
+// Edición de ciudad (ayuntamiento) si se compiló con VITE_CIUDAD; si no, la general.
+const edition = await loadEdition().catch((e) => {
+  $('mode-note').textContent = String(e.message ?? e);
+  return undefined;
+});
+const editionCity: GeoResult | undefined = edition && { name: edition.name, detail: edition.detail ?? '', lat: edition.lat, lng: edition.lng };
+if (CITY_ID) document.body.classList.add('edition-city');
 let lastPos: { lat: number; lng: number } | undefined;
 
 // Estadísticas por ciudad (en el navegador): primer descubrimiento, finalización y distancia recorrida.
@@ -148,23 +149,24 @@ function renderRecent() {
   }
 }
 
-function renderMode() {
-  document.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.mode === mode)));
-  $('advertise-note').hidden = mode !== 'recreativo';
+// Portada de la edición de ciudad: sin buscador de ciudades ni anuncios, con su título y su logotipo.
+if (edition && editionCity) {
+  document.title = `${edition.title ?? edition.name} · FlyFly`;
+  $('intro-title').textContent = edition.title ?? `Sobrevuela ${edition.name}`;
+  $('intro-lead').textContent = edition.subtitle ?? `Pilota un ovni sobre ${edition.name} en 3D y descubre sus lugares más especiales.`;
+  if (edition.logo) { const logo = $<HTMLImageElement>('city-logo'); logo.src = edition.logo; logo.hidden = false; }
+  $('search').hidden = $('results').hidden = $('recent').hidden = $('advertise-note').hidden = true;
+  const start = $<HTMLButtonElement>('start-btn');
+  start.textContent = edition.start ?? 'Despegar';
+  start.hidden = false;
+  start.onclick = () => (flying ? ($('intro').hidden = true, paused = false) : startFlight(editionCity));
+  start.focus();
+} else {
+  searchInput.disabled = searchBtn.disabled = false;
+  setStatus('');
+  renderRecent();
+  searchInput.focus();
 }
-document.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach((b) => {
-  b.onclick = () => {
-    mode = b.dataset.mode as Mode;
-    try { localStorage.setItem(MODE_KEY, mode); } catch { /* sin almacenamiento */ }
-    renderMode();
-  };
-});
-renderMode();
-
-searchInput.disabled = searchBtn.disabled = false;
-setStatus('');
-renderRecent();
-searchInput.focus();
 
 function openSearch() {
   closePanels();
@@ -174,6 +176,10 @@ function openSearch() {
   renderRecent();
   $('intro-close').hidden = !flying;
   $('intro').hidden = false;
+  if (edition) {
+    $('start-btn').textContent = flying ? 'Seguir volando' : edition.start ?? 'Despegar';
+    return;
+  }
   searchInput.select();
   searchInput.focus();
 }
@@ -186,7 +192,7 @@ function goHome() {
   $('victory').hidden = true;
   flying = false;
   paused = true;
-  document.body.classList.remove('flying', 'mode-recreativo');
+  document.body.classList.remove('flying');
   pois.clear();
   ads.clear();
   ufo.hide();
@@ -196,9 +202,9 @@ function goHome() {
   $('results').innerHTML = '';
   setStatus('');
   renderRecent();
-  renderMode();
   $('intro-close').hidden = true;
   $('intro').hidden = false;
+  if (edition) $('start-btn').textContent = edition.start ?? 'Despegar';
 }
 $('home-btn').onclick = goHome;
 $('intro-close').onclick = () => {
@@ -242,15 +248,13 @@ $('search').addEventListener('submit', async (e) => {
 
 async function startFlight(place: GeoResult) {
   stopAutopilot();
-  saveRecent(place);
+  if (!edition) saveRecent(place);
   currentCity = place;
-  flightMode = mode;
-  document.body.classList.toggle('mode-recreativo', flightMode === 'recreativo');
   const advertise = $<HTMLAnchorElement>('advertise-btn');
-  advertise.hidden = flightMode !== 'recreativo';
+  advertise.hidden = !!edition;
   advertise.href = `anunciate.html?${new URLSearchParams({ ciudad: place.name, lat: place.lat.toFixed(5), lng: place.lng.toFixed(5) })}`;
   lastPos = undefined;
-  track('ciudad', { ciudad: place.name, modo: flightMode });
+  track('ciudad', { ciudad: place.name, edicion: CITY_ID || 'general' });
   // sound.start(); // Sonido
   $('intro').hidden = true;
   $('results').innerHTML = '';
@@ -259,13 +263,12 @@ async function startFlight(place: GeoResult) {
   flying = true;
   paused = false;
   document.body.classList.add('flying');
-  if (flightMode === 'recreativo') {
-    const n = ads.pois.length;
-    showAreaTitle(place.name, n ? `${n} ${n === 1 ? 'negocio' : 'negocios y anunciantes'} en el mapa` : 'Todavía no hay anunciantes aquí. ¡Sé el primero!');
-  } else {
-    const { total } = pois.progress();
-    showAreaTitle(place.name, total ? `${total} lugares escondidos por descubrir` : 'No hay lugares registrados en esta zona');
-  }
+  const { total } = pois.progress();
+  const n = ads.pois.length;
+  showAreaTitle(place.name, [
+    total ? `${total} lugares escondidos por descubrir` : 'No hay lugares registrados en esta zona',
+    n ? `${n} ${n === 1 ? 'negocio' : 'negocios'} en el mapa` : '',
+  ].filter(Boolean).join(' · '));
   showHelpOnce();
 }
 
@@ -306,8 +309,8 @@ async function flyTo(place: GeoResult) {
   pois.clear();
   ads.clear();
   const placesStep = document.querySelector('#loading-steps [data-step="places"]')!;
-  placesStep.lastChild!.textContent = flightMode === 'recreativo' ? 'Buscando negocios y anunciantes' : 'Buscando lugares de interés';
-  $('city-name').textContent = $('drawer-city').textContent = $('loading-city').textContent = place.name;
+  placesStep.lastChild!.textContent = edition ? 'Buscando lugares de interés' : 'Buscando lugares de interés y negocios';
+  $('city-name').textContent = $('drawer-city').textContent = $('loading-city').textContent = $('finder-city').textContent = place.name;
   document.querySelectorAll<HTMLElement>('#loading-steps li').forEach((li) => {
     li.className = '';
     li.querySelector('.step-icon')!.innerHTML = '';
@@ -317,10 +320,10 @@ async function flyTo(place: GeoResult) {
   $('loading').hidden = false;
 
   // Los lugares se piden a la vez que se coloca la cámara y se mide el terreno.
-  const tourism = flightMode === 'turismo';
-  const places = tourism ? loadCityPois(place.lat, place.lng) : Promise.resolve([]);
-  const sponsors = tourism ? loadSponsors(place.lat, place.lng) : Promise.resolve([]);
-  const advertisers = tourism ? Promise.resolve([]) : loadAdvertisers(place.lat, place.lng);
+  // Edición de ciudad: los lugares del ayuntamiento y sin anuncios. General: Wikipedia y anunciantes a la vez.
+  const places = edition ? loadEditionPois(edition) : loadCityPois(place.lat, place.lng);
+  const sponsors = edition ? Promise.resolve([]) : loadSponsors(place.lat, place.lng);
+  const advertisers = edition ? Promise.resolve([]) : loadAdvertisers(place.lat, place.lng);
   places.catch(() => {}); // se gestiona más abajo
 
   step('city', 'active');
@@ -342,7 +345,7 @@ async function flyTo(place: GeoResult) {
   try {
     pois.add(await sponsors);
   } catch { /* sin patrocinadores */ }
-  if (!tourism) await ads.add(await advertisers, ufo.excluded);
+  await ads.add(await advertisers, ufo.excluded);
   setProgress(0.35);
 
   step('tiles', 'active');
@@ -511,13 +514,7 @@ function renderDrawer() {
   }
 
   // La cuadrícula solo se rehace cuando cambia el número de descubiertos (evita recargar fotos).
-  const recreational = flightMode === 'recreativo';
-  $('drawer-kind').textContent = recreational ? 'Negocios' : 'Lugares';
-  $('drawer-grid-title').textContent = recreational ? 'En el mapa' : 'Descubiertos';
-  $('drawer-empty').textContent = recreational
-    ? 'Todavía no hay anunciantes en esta ciudad.'
-    : 'Todavía no has descubierto ningún lugar. Sigue la flecha y los haces de luz naranjas.';
-  const found = recreational ? ads.pois : [...pois.pois.values()].filter((p) => pois.isDiscovered(p) && !p.sponsor);
+  const found = [...pois.pois.values()].filter((p) => pois.isDiscovered(p) && !p.sponsor);
   $('drawer-empty').hidden = found.length > 0;
   if (found.length === gridCount) return;
   gridCount = found.length;
@@ -544,12 +541,96 @@ function toggleDrawer() {
   if (!drawer.hidden) return closeDrawer();
   closePopovers();
   closeSheet();
+  closeFinder();
   gridCount = -1;
   renderDrawer();
   drawer.hidden = false;
 }
 $('menu-btn').onclick = toggleDrawer;
 $('drawer-close').onclick = closeDrawer;
+
+// ---------- Buscador de la ciudad (como Google Maps) ----------
+function closeFinder() {
+  $('finder').hidden = true;
+}
+function openFinder() {
+  if (!$('finder').hidden) return closeFinder();
+  closePopovers();
+  closeSheet();
+  closeDrawer();
+  $('finder').hidden = false;
+  const input = $<HTMLInputElement>('finder-input');
+  input.focus();
+  input.select();
+}
+$('finder-btn').onclick = openFinder;
+$('finder-close').onclick = closeFinder;
+$('finder-input').addEventListener('keydown', (e) => { if (e.key === 'Escape') closeFinder(); });
+
+const chips = $('finder-chips');
+for (const s of edition ? ['Restaurantes', 'Cafeterías', 'Hoteles', 'Museos', 'Tiendas', 'Ocio'] : SUGGESTIONS) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.textContent = s;
+  b.onclick = () => { $<HTMLInputElement>('finder-input').value = s; runFinder(s); };
+  chips.append(b);
+}
+$('finder-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  runFinder($<HTMLInputElement>('finder-input').value.trim());
+});
+
+let finderRun = 0;
+async function runFinder(query: string) {
+  if (!query || !currentCity) return;
+  const run = ++finderRun;
+  const list = $('finder-results');
+  list.innerHTML = '';
+  $('finder-status').textContent = 'Buscando…';
+  track('busqueda', { texto: query.toLowerCase().slice(0, 40), ciudad: currentCity.name });
+  // En la edición de ciudad también se buscan sus lugares (en la general, los de Wikipedia se descubren volando).
+  const own = edition ? [...pois.pois.values()].filter((p) => p.id.startsWith('c_')) : [];
+  const { results, osmFailed } = await searchPlaces(query, currentCity, ufo, { ads: !edition, places: own });
+  if (run !== finderRun) return;
+  $('finder-status').textContent = results.length
+    ? `${results.length} ${results.length === 1 ? 'resultado' : 'resultados'}${osmFailed ? ' (sin los locales de OpenStreetMap, que no responden ahora)' : ''}`
+    : osmFailed ? 'La búsqueda de locales no está disponible ahora mismo. Inténtalo de nuevo.' : `No encontré «${query}» en ${currentCity.name}.`;
+  for (const r of results) {
+    const li = document.createElement('li');
+    li.className = `result${r.sponsored ? ' is-sponsored' : ''}`;
+    if (r.color) li.style.setProperty('--brand', r.color);
+    li.innerHTML = `
+      <button type="button" class="result-main">
+        <span class="result-photo">${r.image ? '<img alt="" loading="lazy" />' : icon(r.sponsored ? 'storefront' : r.kind === 'lugar' ? 'pin' : 'storefront')}</span>
+        <span class="result-text"><b></b><small></small><span class="result-desc"></span></span>
+      </button>
+      <div class="result-actions"></div>`;
+    if (r.image) li.querySelector('img')!.src = r.image;
+    li.querySelector('b')!.textContent = r.name;
+    li.querySelector('small')!.textContent = [r.sponsored ? 'Patrocinado' : r.kind === 'lugar' ? 'Lugar de interés' : '', formatDistance(distance(ufo, r))].filter(Boolean).join(' · ');
+    li.querySelector('.result-desc')!.textContent = r.description ?? '';
+    const poi: Poi = r.poi ?? { id: r.id, name: r.name, lat: r.lat, lng: r.lng, description: r.description, url: r.link };
+    li.querySelector<HTMLButtonElement>('.result-main')!.onclick = () => (r.poi ? openSheet(r.poi) : travelTo(poi));
+    const actions = li.querySelector('.result-actions')!;
+    if (r.link) {
+      const a = document.createElement('a');
+      a.className = 'btn btn-secondary btn-sm';
+      a.href = r.link;
+      a.target = '_blank';
+      a.rel = r.sponsored ? 'noopener sponsored' : 'noopener';
+      a.innerHTML = `${r.cta ?? 'Web'} ${icon('external')}`;
+      if (r.sponsored) a.onclick = () => track('anuncio-clic', { anuncio: r.id, origen: 'buscador' });
+      actions.append(a);
+    }
+    const go = document.createElement('button');
+    go.type = 'button';
+    go.className = 'btn btn-primary btn-sm';
+    go.innerHTML = `${icon('travel')} Ir`;
+    go.onclick = () => travelTo(poi);
+    actions.append(go);
+    list.append(li);
+  }
+}
 
 // ---------- Ajustes y controles ----------
 function closePopovers() {
@@ -559,6 +640,7 @@ function closePopovers() {
 function closePanels() {
   closePopovers();
   closeDrawer();
+  closeFinder();
   closeSheet();
 }
 function togglePopover(id: 'settings' | 'help') {

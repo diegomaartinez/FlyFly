@@ -5,8 +5,8 @@
  */
 type Vec3 = [number, number, number];
 export type RGB = [number, number, number];
-export interface Mesh { positions: number[]; normals: number[]; indices: number[] }
-export interface Part { mesh: Mesh; color: RGB; metallic?: number; roughness?: number; emissive?: RGB }
+export interface Mesh { positions: number[]; normals: number[]; indices: number[]; uvs?: number[] }
+export interface Part { mesh: Mesh; color: RGB; metallic?: number; roughness?: number; emissive?: RGB; texture?: HTMLCanvasElement }
 
 export function hexToRgb(hex: string): RGB {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
@@ -90,6 +90,7 @@ function toGlbUrl(parts: Part[]): string {
   const gltf: any = {
     asset: { version: '2.0', generator: 'FlyFly' }, scene: 0, scenes: [{ nodes: [0] }], nodes: [{ mesh: 0 }],
     meshes: [{ primitives: [] }], materials: [], buffers: [], bufferViews: [], accessors: [],
+    images: [], textures: [], samplers: [{ magFilter: 9729, minFilter: 9987, wrapS: 33071, wrapT: 33071 }],
   };
   const chunks: Uint8Array[] = [];
   let offset = 0;
@@ -101,21 +102,28 @@ function toGlbUrl(parts: Part[]): string {
     offset += bytes.length + pad;
     return gltf.bufferViews.length - 1;
   };
-  for (const { mesh, color, metallic = 0, roughness = 0.6, emissive } of parts) {
+  for (const { mesh, color, metallic = 0, roughness = 0.6, emissive, texture } of parts) {
     const pos = new Float32Array(mesh.positions);
     const min = [0, 1, 2].map((i) => Math.min(...mesh.positions.filter((_, j) => j % 3 === i)));
     const max = [0, 1, 2].map((i) => Math.max(...mesh.positions.filter((_, j) => j % 3 === i)));
     gltf.accessors.push({ bufferView: addView(pos, 34962), componentType: 5126, count: pos.length / 3, type: 'VEC3', min, max });
     gltf.accessors.push({ bufferView: addView(new Float32Array(mesh.normals), 34962), componentType: 5126, count: pos.length / 3, type: 'VEC3' });
     gltf.accessors.push({ bufferView: addView(new Uint16Array(mesh.indices), 34963), componentType: 5123, count: mesh.indices.length, type: 'SCALAR' });
-    gltf.materials.push({
-      doubleSided: true,
-      pbrMetallicRoughness: { baseColorFactor: [...color, 1], metallicFactor: metallic, roughnessFactor: roughness },
-      ...(emissive ? { emissiveFactor: emissive } : {}),
-    });
     const n = gltf.accessors.length;
-    gltf.meshes[0].primitives.push({ attributes: { POSITION: n - 3, NORMAL: n - 2 }, indices: n - 1, material: gltf.materials.length - 1 });
+    const attributes: Record<string, number> = { POSITION: n - 3, NORMAL: n - 2 };
+    const pbr: any = { baseColorFactor: [...color, 1], metallicFactor: metallic, roughnessFactor: roughness };
+    if (texture && mesh.uvs) {
+      gltf.accessors.push({ bufferView: addView(new Float32Array(mesh.uvs), 34962), componentType: 5126, count: pos.length / 3, type: 'VEC2' });
+      attributes.TEXCOORD_0 = gltf.accessors.length - 1;
+      gltf.images.push({ uri: texture.toDataURL('image/png') });
+      gltf.textures.push({ source: gltf.images.length - 1, sampler: 0 });
+      pbr.baseColorTexture = { index: gltf.textures.length - 1 };
+      pbr.baseColorFactor = [1, 1, 1, 1];
+    }
+    gltf.materials.push({ doubleSided: true, pbrMetallicRoughness: pbr, ...(emissive ? { emissiveFactor: emissive } : {}) });
+    gltf.meshes[0].primitives.push({ attributes, indices: n - 1, material: gltf.materials.length - 1 });
   }
+  if (!gltf.images.length) { delete gltf.images; delete gltf.textures; delete gltf.samplers; }
   gltf.buffers.push({ byteLength: offset });
   const json = new TextEncoder().encode(JSON.stringify(gltf));
   const jsonPad = (4 - (json.length % 4)) % 4;
@@ -142,9 +150,48 @@ export function balloonUrl(hex: string): string {
   return toGlbUrl(balloonParts(hex));
 }
 
-/** Avioneta (~9 m) con alas y cola del color elegido y una pancarta remolcada del mismo color. */
-export function planeUrl(hex: string): string {
-  return toGlbUrl(planeParts(hex));
+/** Avioneta (~9 m) con alas y cola del color elegido y una pancarta remolcada del mismo color con `text`. */
+export function planeUrl(hex: string, text = ''): string {
+  return toGlbUrl(planeParts(hex, text));
+}
+
+/** Tipografía de la pancarta: cárgala (document.fonts.load) antes de generar la avioneta. */
+export const BANNER_FONT = "800 150px 'Outfit Variable', system-ui, sans-serif";
+
+/** Lona de la pancarta: fondo del color del anunciante y el texto en blanco o negro según el contraste. */
+export function bannerCanvas(hex: string, text: string): HTMLCanvasElement {
+  const c = document.createElement('canvas');
+  c.width = 1100; c.height = 320;
+  const g = c.getContext('2d')!;
+  const color = /^#[0-9a-f]{6}$/i.test(hex) ? hex : '#e2602f';
+  g.fillStyle = color;
+  g.fillRect(0, 0, c.width, c.height);
+  g.strokeStyle = 'rgba(255,255,255,0.85)';
+  g.lineWidth = 12;
+  g.strokeRect(14, 14, c.width - 28, c.height - 28);
+  const [r, gr, b] = [1, 3, 5].map((i) => parseInt(color.slice(i, i + 2), 16));
+  g.fillStyle = 0.299 * r + 0.587 * gr + 0.114 * b > 170 ? '#14181f' : '#ffffff';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.font = BANNER_FONT;
+  const label = text.trim().toUpperCase().slice(0, 28);
+  const scale = Math.min(1, (c.width - 90) / Math.max(1, g.measureText(label).width));
+  g.font = BANNER_FONT.replace('150px', `${Math.floor(150 * scale)}px`);
+  g.fillText(label, c.width / 2, c.height / 2 + 6);
+  return c;
+}
+
+/** Las dos caras de la pancarta, cada una con el texto legible desde su lado. */
+function bannerMesh(): Mesh {
+  const [z0, z1, y0, y1, x] = [-13.5, -24.5, -2, 1.2, 0.05];
+  const quad = (xs: number, zl: number, zr: number) => ({
+    positions: [xs, y0, zl, xs, y0, zr, xs, y1, zr, xs, y1, zl],
+    normals: Array(4).fill([Math.sign(xs), 0, 0]).flat(),
+    uvs: [0, 1, 1, 1, 1, 0, 0, 0],
+    indices: [0, 1, 2, 0, 2, 3],
+  });
+  const a = quad(x, z0, z1), b = quad(-x, z1, z0);
+  return { ...merge([a, b]), uvs: [...a.uvs, ...b.uvs] };
 }
 
 export function balloonParts(hex: string): Part[] {
@@ -162,7 +209,7 @@ export function balloonParts(hex: string): Part[] {
   ];
 }
 
-export function planeParts(hex: string): Part[] {
+export function planeParts(hex: string, text = ''): Part[] {
   const color = hexToRgb(hex);
   const fuselage = yToZ(lathe([[0.01, 4.2], [0.55, 3.8], [0.75, 2.6], [0.75, 0.5], [0.55, -2], [0.25, -4.2], [0.01, -4.3]], 12));
   const wings = merge([box([0, 0.2, 1.2], [10, 0.18, 1.6]), box([0, 0.4, -3.8], [3.6, 0.12, 0.9]), box([0, 1.1, -3.9], [0.14, 1.6, 1])]);
@@ -176,5 +223,6 @@ export function planeParts(hex: string): Part[] {
     { mesh: prop, color: DARK },
     { mesh: rope, color: DARK },
     { mesh: banner, color, roughness: 0.8 },
+    ...(text.trim() ? [{ mesh: bannerMesh(), color, roughness: 0.8, texture: bannerCanvas(hex, text) }] : []),
   ];
 }

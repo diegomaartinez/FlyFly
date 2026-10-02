@@ -3,12 +3,12 @@
  * siga siendo ligera) que muestra el globo, el ovni o la avioneta con el color elegido y la misma
  * animación que en el juego. La etiqueta HTML se coloca encima del modelo en cada fotograma.
  */
-import { balloonParts, box, hexToRgb, merge, Mesh, Part, planeParts, RGB } from './models';
+import { balloonParts, BANNER_FONT, box, hexToRgb, merge, Mesh, Part, planeParts, RGB } from './models';
 
 type AdType = 'lugar' | 'globo' | 'ovni' | 'avioneta';
 type Mat = Float32Array;
 
-interface Gpu { pos: WebGLBuffer; nor: WebGLBuffer; idx: WebGLBuffer; count: number; type: number; color: RGB; alpha: number; emissive: RGB }
+interface Gpu { pos: WebGLBuffer; nor: WebGLBuffer; idx: WebGLBuffer; count: number; type: number; color: RGB; alpha: number; emissive: RGB; uv?: WebGLBuffer; tex?: WebGLTexture }
 
 const SKY: RGB = [0.42, 0.62, 0.82];
 const GROUND: RGB = [0.16, 0.24, 0.13];
@@ -60,7 +60,7 @@ function rotY(a: number): Mat { const m = mat(), c = Math.cos(a), s = Math.sin(a
 function rotZ(a: number): Mat { const m = mat(), c = Math.cos(a), s = Math.sin(a); m[0] = c; m[1] = s; m[4] = -s; m[5] = c; return m; }
 
 // ---------- Lectura del ovni (models/ufo.glb, una sola malla sin transformaciones) ----------
-interface RawPart { positions: Float32Array; normals: Float32Array; indices: Uint16Array | Uint32Array; color: RGB; alpha: number; emissive: RGB }
+interface RawPart { positions: Float32Array; normals: Float32Array; indices: Uint16Array | Uint32Array; color: RGB; alpha: number; emissive: RGB; uvs?: Float32Array; texture?: HTMLCanvasElement }
 async function loadGlb(url: string): Promise<RawPart[]> {
   const buf = await (await fetch(url)).arrayBuffer();
   const dv = new DataView(buf);
@@ -86,10 +86,11 @@ async function loadGlb(url: string): Promise<RawPart[]> {
 }
 
 const VS = `
-attribute vec3 aPos; attribute vec3 aNor;
+attribute vec3 aPos; attribute vec3 aNor; attribute vec2 aUV;
 uniform mat4 uModel; uniform mat4 uViewProj; uniform mat4 uView;
-varying vec3 vNor; varying float vDist;
+varying vec3 vNor; varying float vDist; varying vec2 vUV;
 void main() {
+  vUV = aUV;
   vec4 w = uModel * vec4(aPos, 1.0);
   vNor = (uModel * vec4(aNor, 0.0)).xyz;
   vDist = -(uView * w).z;
@@ -98,12 +99,14 @@ void main() {
 const FS = `
 precision mediump float;
 uniform vec3 uColor; uniform vec3 uEmissive; uniform float uAlpha; uniform vec3 uSky; uniform float uFog;
-varying vec3 vNor; varying float vDist;
+uniform sampler2D uTex; uniform float uUseTex;
+varying vec3 vNor; varying float vDist; varying vec2 vUV;
 void main() {
   vec3 n = normalize(vNor);
   if (!gl_FrontFacing) n = -n;
   float sun = max(dot(n, normalize(vec3(0.45, 0.8, 0.35))), 0.0);
-  vec3 c = uColor * (0.42 + 0.75 * sun) + uEmissive;
+  vec3 base = uUseTex > 0.5 ? pow(texture2D(uTex, vUV).rgb, vec3(2.2)) : uColor;
+  vec3 c = base * (0.42 + 0.75 * sun) + uEmissive;
   c = mix(c, uSky, clamp(vDist / uFog, 0.0, 1.0) * 0.85);
   gl_FragColor = vec4(pow(c, vec3(1.0 / 2.2)), uAlpha);
 }`;
@@ -114,6 +117,8 @@ export class AdPreview3D {
   private loc: Record<string, WebGLUniformLocation | null> = {};
   private aPos: number;
   private aNor: number;
+  private aUV: number;
+  private banner = '';
   private parts: Gpu[] = [];
   private ground: Gpu;
   private city: Gpu;
@@ -140,9 +145,10 @@ export class AdPreview3D {
     gl.attachShader(this.prog, shader(gl.FRAGMENT_SHADER, FS));
     gl.linkProgram(this.prog);
     gl.useProgram(this.prog);
-    for (const u of ['uModel', 'uViewProj', 'uView', 'uColor', 'uEmissive', 'uAlpha', 'uSky', 'uFog']) this.loc[u] = gl.getUniformLocation(this.prog, u);
+    for (const u of ['uModel', 'uViewProj', 'uView', 'uColor', 'uEmissive', 'uAlpha', 'uSky', 'uFog', 'uTex', 'uUseTex']) this.loc[u] = gl.getUniformLocation(this.prog, u);
     this.aPos = gl.getAttribLocation(this.prog, 'aPos');
     this.aNor = gl.getAttribLocation(this.prog, 'aNor');
+    this.aUV = gl.getAttribLocation(this.prog, 'aUV');
     gl.enableVertexAttribArray(this.aPos);
     gl.enableVertexAttribArray(this.aNor);
     gl.enable(gl.DEPTH_TEST);
@@ -154,10 +160,11 @@ export class AdPreview3D {
     new IntersectionObserver(([e]) => { this.visible = e.isIntersecting; if (this.visible) this.loop(); }).observe(canvas);
   }
 
-  set(type: AdType, color: string) {
-    const changed = type !== this.type || color !== this.color;
+  set(type: AdType, color: string, banner = '') {
+    const changed = type !== this.type || color !== this.color || (type === 'avioneta' && banner !== this.banner);
     this.type = type;
     this.color = color;
+    this.banner = banner;
     if (changed || !this.parts.length) this.build();
   }
 
@@ -168,19 +175,39 @@ export class AdPreview3D {
       pos: buffer(gl.ARRAY_BUFFER, p.positions), nor: buffer(gl.ARRAY_BUFFER, p.normals), idx: buffer(gl.ELEMENT_ARRAY_BUFFER, p.indices),
       count: p.indices.length, type: p.indices instanceof Uint32Array ? gl.UNSIGNED_INT : gl.UNSIGNED_SHORT,
       color: p.color, alpha: p.alpha, emissive: p.emissive,
+      ...(p.uvs && p.texture ? { uv: buffer(gl.ARRAY_BUFFER, p.uvs), tex: this.texture(p.texture) } : {}),
     };
+  }
+
+  private texture(canvas: HTMLCanvasElement): WebGLTexture {
+    const gl = this.gl, t = gl.createTexture()!;
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    return t;
   }
 
   private async build() {
     const gl = this.gl;
-    for (const p of this.parts) [p.pos, p.nor, p.idx].forEach((b) => gl.deleteBuffer(b));
+    for (const p of this.parts) {
+      [p.pos, p.nor, p.idx, p.uv].forEach((b) => b && gl.deleteBuffer(b));
+      if (p.tex) gl.deleteTexture(p.tex);
+    }
     this.parts = [];
     const fromParts = (list: Part[]) => list.map((p) => this.upload({
       positions: new Float32Array(p.mesh.positions), normals: new Float32Array(p.mesh.normals), indices: new Uint16Array(p.mesh.indices),
       color: p.color, alpha: 1, emissive: p.emissive ?? [0, 0, 0],
+      uvs: p.mesh.uvs && new Float32Array(p.mesh.uvs), texture: p.texture,
     }));
     if (this.type === 'globo') this.parts = fromParts(balloonParts(this.color));
-    else if (this.type === 'avioneta') this.parts = fromParts(planeParts(this.color));
+    else if (this.type === 'avioneta') {
+      const key = this.banner + this.color;
+      await document.fonts?.load(BANNER_FONT).catch(() => undefined);
+      if (this.type !== 'avioneta' || key !== this.banner + this.color) return;
+      this.parts = fromParts(planeParts(this.color, this.banner));
+    }
     else if (this.type === 'ovni') {
       const type = this.type;
       try { this.ufo ??= await loadGlb('models/ufo.glb'); } catch { return; }
@@ -260,6 +287,15 @@ export class AdPreview3D {
     gl.vertexAttribPointer(this.aPos, 3, gl.FLOAT, false, 0, 0);
     gl.bindBuffer(gl.ARRAY_BUFFER, p.nor);
     gl.vertexAttribPointer(this.aNor, 3, gl.FLOAT, false, 0, 0);
+    gl.uniform1f(this.loc.uUseTex, p.tex ? 1 : 0);
+    if (p.uv && p.tex && this.aUV >= 0) {
+      gl.enableVertexAttribArray(this.aUV);
+      gl.bindBuffer(gl.ARRAY_BUFFER, p.uv);
+      gl.vertexAttribPointer(this.aUV, 2, gl.FLOAT, false, 0, 0);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, p.tex);
+      gl.uniform1i(this.loc.uTex, 0);
+    } else if (this.aUV >= 0) gl.disableVertexAttribArray(this.aUV);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, p.idx);
     gl.drawElements(gl.TRIANGLES, p.count, p.type, 0);
   }

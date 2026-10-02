@@ -10,6 +10,11 @@
     "text": "Anunciante de ejemplo. Así se ve un negocio que contrata un lugar en el mapa: una tarjeta junto a su local con su nombre, su frase y el color que elija.",
     "link": "https://example.com",
     "cta": "Reservar",
+    "tags": [
+      "restaurante",
+      "marisquería",
+      "marisco"
+    ],
     "until": "2027-12-31"
   },
   {
@@ -23,6 +28,11 @@
     "text": "Anunciante de ejemplo de tipo lugar, con otro color de recuadro.",
     "link": "https://example.com",
     "cta": "Ver carta",
+    "tags": [
+      "cafetería",
+      "desayunos",
+      "playa"
+    ],
     "until": "2027-12-31"
   },
   {
@@ -36,6 +46,10 @@
     "text": "Anunciante de ejemplo de tipo globo aerostático: flota a 160 m sobre su ubicación con gajos de su color.",
     "link": "https://example.com",
     "cta": "Reservar",
+    "tags": [
+      "hotel",
+      "alojamiento"
+    ],
     "until": "2027-12-31"
   },
   {
@@ -49,6 +63,11 @@
     "text": "Anunciante de ejemplo de tipo globo sobre la playa de Riazor.",
     "link": "https://example.com",
     "cta": "Pedir información",
+    "tags": [
+      "surf",
+      "deporte",
+      "clases"
+    ],
     "until": "2027-12-31"
   },
   {
@@ -56,12 +75,17 @@
     "name": "Juguetería Galaxia",
     "type": "ovni",
     "lat": 43.3665,
-    "lng": -8.4010,
+    "lng": -8.401,
     "color": "#7048e8",
     "description": "Juguetes y juegos de mesa (ejemplo)",
     "text": "Anunciante de ejemplo de tipo ovni gigante: una nave tres veces más grande que la del jugador, girando sobre su local.",
     "link": "https://example.com",
     "cta": "Comprar",
+    "tags": [
+      "juguetería",
+      "juegos de mesa",
+      "tienda"
+    ],
     "until": "2027-12-31"
   },
   {
@@ -69,38 +93,55 @@
     "name": "Planetario Estrella Polar",
     "type": "ovni",
     "lat": 43.3795,
-    "lng": -8.4120,
+    "lng": -8.412,
     "color": "#0ca678",
     "description": "Sesiones de astronomía (ejemplo)",
     "text": "Anunciante de ejemplo de tipo ovni con otro color.",
     "link": "https://example.com",
     "cta": "Comprar",
+    "tags": [
+      "planetario",
+      "ocio",
+      "astronomía"
+    ],
     "until": "2027-12-31"
   },
   {
     "id": "ejemplo-festival-verano",
     "name": "Festival Atlántico",
     "type": "avioneta",
-    "lat": 43.3740,
-    "lng": -8.4000,
+    "lat": 43.374,
+    "lng": -8.4,
     "color": "#e8590c",
     "description": "Conciertos en julio (ejemplo)",
     "text": "Anunciante de ejemplo de tipo avioneta: da vueltas sobre la zona remolcando una pancarta de su color.",
     "link": "https://example.com",
     "cta": "Comprar",
-    "until": "2027-12-31"
+    "tags": [
+      "festival",
+      "conciertos",
+      "ocio"
+    ],
+    "until": "2027-12-31",
+    "banner": "Conciertos en julio"
   },
   {
     "id": "ejemplo-paseos-barco",
     "name": "Paseos en Barco Torre",
     "type": "avioneta",
-    "lat": 43.3830,
-    "lng": -8.4060,
+    "lat": 43.383,
+    "lng": -8.406,
     "color": "#212529",
     "description": "Recorridos por la costa (ejemplo)",
     "text": "Anunciante de ejemplo de tipo avioneta cerca de la Torre de Hércules.",
     "link": "https://example.com",
     "cta": "Reservar",
-    "until": "2027-12-31"
+    "tags": [
+      "paseos en barco",
+      "experiencia",
+      "ocio"
+    ],
+    "until": "2027-12-31",
+    "banner": "Paseos por la costa"
   }
 ]

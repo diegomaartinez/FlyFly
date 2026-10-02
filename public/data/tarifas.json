@@ -19,14 +19,12 @@
       "nombre": "Ovni gigante",
       "descripcion": "Una nave tres veces más grande que la del jugador, girando sobre tu local.",
       "precioMes": 19,
-      "limite": 5,
       "pago": ""
     },
     "avioneta": {
       "nombre": "Avioneta con pancarta",
       "descripcion": "Una avioneta de tu color que da vueltas sobre la zona remolcando tu pancarta.",
       "precioMes": 29,
-      "limite": 3,
       "pago": ""
     }
   }

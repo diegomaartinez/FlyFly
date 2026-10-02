@@ -70,7 +70,7 @@ Calcula el coste con el tráfico esperado antes de lanzar campañas.
 6. Amplía la política de seguridad: en `public/_headers` sustituye la línea `Content-Security-Policy` por esta y revisa la consola del navegador tras publicar (Google cambia dominios a veces):
 
 ```
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://cloud.umami.is https://plausible.io https://static.cloudflareinsights.com https://*.googlesyndication.com https://*.google.com https://*.gstatic.com https://*.doubleclick.net https://*.googletagservices.com https://*.adtrafficquality.google https://fundingchoicesmessages.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' data: blob: https://*.googleapis.com https://*.cesium.com https://*.wikipedia.org https://*.wikimedia.org https://nominatim.openstreetmap.org https://www.ign.es https://tiles.maps.eox.at https://formspree.io https://api.web3forms.com https://cloud.umami.is https://api-gateway.umami.dev https://plausible.io https://static.cloudflareinsights.com https://cloudflareinsights.com https://*.google.com https://*.googlesyndication.com https://*.doubleclick.net https://*.adtrafficquality.google; frame-src https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com https://fundingchoicesmessages.google.com; worker-src 'self' blob:; child-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://cloud.umami.is https://plausible.io https://static.cloudflareinsights.com https://*.googlesyndication.com https://*.google.com https://*.gstatic.com https://*.doubleclick.net https://*.googletagservices.com https://*.adtrafficquality.google https://fundingchoicesmessages.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' data: blob: https://*.googleapis.com https://*.cesium.com https://*.wikipedia.org https://*.wikimedia.org https://nominatim.openstreetmap.org https://www.ign.es https://tiles.maps.eox.at https://formspree.io https://api.web3forms.com https://formsubmit.co https://overpass-api.de https://cloud.umami.is https://api-gateway.umami.dev https://plausible.io https://static.cloudflareinsights.com https://cloudflareinsights.com https://*.google.com https://*.googlesyndication.com https://*.doubleclick.net https://*.adtrafficquality.google; frame-src https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com https://fundingchoicesmessages.google.com; worker-src 'self' blob:; child-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests
 ```
 
 ## 6. Patrocinios de negocios locales
@@ -104,16 +104,18 @@ Antes de cobrar:
 - **Contrato o condiciones de patrocinio**: duración, precio, qué incluye (posición, visibilidad, enlace), forma de pago, renovación y baja, y que el negocio garantiza los derechos de las fotos y textos que entrega.
 - **Cobro**: transferencia o una pasarela como Stripe (nunca manejes tú datos de tarjetas).
 
-## 7. Vender anuncios en el modo recreativo
+## 7. Vender anuncios
 
 Flujo sin servidor propio: el anunciante envía su solicitud, tú la revisas y la publicas.
 
-1. **Tarifas**: edita `public/data/tarifas.json`. Cada forma de aparecer tiene `precioMes` (en euros, sin IVA) y, si quieres plazas limitadas, `limite` (máximo por ciudad: el juego muestra solo los primeros de `anunciantes.json` y la página Anúnciate lo indica). `descuentos` fija el porcentaje por contratar 6 o 12 meses y `oferta` el texto de la oferta vigente (bórralo para quitarla). Precios de lanzamiento: lugar 5 €, globo 12 €, ovni 19 € (5 por ciudad) y avioneta 29 € (3 por ciudad) al mes, 10 % de descuento a 6 meses y 20 % a 12. Quien contrata a precio de lanzamiento lo mantiene mientras renueve sin interrupción, así que puedes subir los precios para los nuevos cuando haya demanda (por ejemplo, cuando se llenen las plazas de avioneta u ovni en una ciudad, o cuando tengas cifras de visitas que enseñar) sin enfadar a los primeros. Anota en cada anuncio el precio al que contrató para respetarlo en las renovaciones.
+1. **Tarifas**: edita `public/data/tarifas.json`. Cada forma de aparecer tiene `precioMes` (en euros, sin IVA). No hay límite de anuncios por tipo: tú decides cuántos aceptas en cada ciudad al revisar las solicitudes. `descuentos` fija el porcentaje por contratar 6 o 12 meses y `oferta` el texto de la oferta vigente (bórralo para quitarla). Precios de lanzamiento: lugar 5 €, globo 12 €, ovni 19 € y avioneta 29 € al mes, 10 % de descuento a 6 meses y 20 % a 12. Quien contrata a precio de lanzamiento lo mantiene mientras renueve sin interrupción, así que puedes subir los precios para los nuevos cuando haya demanda (por ejemplo, cuando haya muchas avionetas u ovnis en una ciudad o cuando tengas cifras de visitas que enseñar) sin enfadar a los primeros. Anota en cada anuncio el precio al que contrató para respetarlo en las renovaciones.
 2. **Cobro**: lo más sencillo al principio es cobrar a mano tras aprobar la solicitud, con una factura de Stripe (*Invoices*) o una transferencia, porque así aplicas el descuento por duración y la oferta. Si prefieres enlaces de pago, crea en Stripe un *Payment Link* para cada tarifa y pon su URL en el campo `pago`: la página lo ofrece tras enviar la solicitud, con el email y la referencia del anuncio ya rellenos. Avisa de que el anuncio no se publica hasta revisarlo y que si se rechaza se devuelve el dinero (ya está en las condiciones).
    - **Particulares**: el formulario pregunta si se contrata como empresa o autónomo o como particular. Los particulares tienen 14 días de desistimiento y deben marcar una casilla para pedir que el anuncio se publique antes; la solicitud llega con esa constancia y la fecha (campo `desistimiento`). Guárdala junto a la factura.
-3. **Recepción de solicitudes**: crea un formulario en un servicio que admita archivos adjuntos (Formspree, Web3Forms u otro; comprueba que tu plan permite adjuntos) y pon su URL en la variable `VITE_FORM_ENDPOINT`. Si usas otro servicio, añade su dominio a `connect-src` en `public/_headers`. Sin servicio, la página ofrece enviar la solicitud por email (el de `titular.js`) y descargar un archivo con las fotos.
+3. **Recepción de solicitudes**: llegan directamente al email de `public/legal/titular.js` a través de [FormSubmit](https://formsubmit.co), gratis y sin crear cuenta, con los datos en una tabla y las fotos adjuntas. La primera solicitud que se envíe hará que FormSubmit te mande un correo de activación: ábrelo y confírmalo (hasta entonces no llegan). Después FormSubmit te ofrece un alias aleatorio para no publicar tu email: ponlo en `VITE_FORM_ENDPOINT` como `https://formsubmit.co/ajax/ALIAS`. Si prefieres otro servicio (Formspree, Web3Forms…), pon su URL en `VITE_FORM_ENDPOINT` y añade su dominio a `connect-src` en `public/_headers`. Si el envío falla, la página ofrece mandar la solicitud por email y descargar un archivo con las fotos.
+   - Cada solicitud trae sus **palabras clave** (`tags`, para el buscador) y, si es una avioneta, el **texto de la pancarta** (`banner`).
 4. **Revisión**: comprueba que el contenido cumple las condiciones para anunciantes, que la ubicación es correcta y que el pago está hecho.
-5. **Publicación**: si te llegó el archivo descargado, ejecuta `node scripts/importar-anuncio.mjs solicitud-flyfly-xxx.json`. Si llegó por el servicio de formularios, guarda las fotos en `public/anunciantes/` con los nombres indicados y pega el bloque `anuncio` en `public/data/anunciantes.json`. Haz commit y push.
+5. **Orden en el buscador**: el buscador del juego muestra primero a los anunciantes que más pagan. Usa el campo `pagado` (euros al mes) de cada anuncio; el script de importación lo rellena con el precio de su tipo y puedes cambiarlo si cobraste otra cifra.
+6. **Publicación**: si te llegó el archivo descargado, ejecuta `node scripts/importar-anuncio.mjs solicitud-flyfly-xxx.json`. Si llegó por el servicio de formularios, guarda las fotos en `public/anunciantes/` con los nombres indicados y pega el bloque `anuncio` en `public/data/anunciantes.json`. Haz commit y push.
 6. **Caducidad**: el campo `until` retira el anuncio automáticamente al terminar el periodo. Para renovar, cambia la fecha.
 7. **Factura** a cada anunciante con IVA.
 
@@ -143,6 +145,23 @@ Eventos que se registran (sin datos personales):
 Con esto puedes enseñar a un negocio cuántas personas visitan su ciudad en FlyFly y, una vez anunciado, cuántas han visto su anuncio y cuántas han pulsado su botón. Completa en la política de privacidad la línea del servicio de estadísticas que uses.
 
 ## 8. Versión para ayuntamientos
+
+FlyFly tiene dos ediciones que salen del mismo código:
+
+- **General** (la que se publica por defecto): cualquier ciudad del mundo, con los lugares de Wikipedia por descubrir, los negocios anunciados y el buscador de locales.
+- **De ciudad**, para ofrecer a un ayuntamiento: siempre la misma ciudad, sin buscador de ciudades ni anuncios, con su propia portada y solo los lugares que elija el ayuntamiento. El buscador de locales sigue disponible (lugares del ayuntamiento y locales de OpenStreetMap, sin patrocinados).
+
+Para preparar la edición de una ciudad:
+
+1. Copia `public/ciudades/coruna.json` (ejemplo) con el nombre de la ciudad, por ejemplo `public/ciudades/lugo.json`, y rellena:
+   - `name`, `detail`, `lat` y `lng` de la ciudad.
+   - `title`, `subtitle` y `start`: textos de la portada y del botón de empezar. `logo`: ruta del escudo o logotipo dentro de `public/` (opcional).
+   - `lugares`: los lugares que quiere el ayuntamiento, cada uno con `name`, `lat`, `lng` y `description`, y opcionalmente `text`, `images` (rutas dentro de `public/`), `link` y `wiki` (título de Wikipedia del que tomar la foto y el texto que falten).
+   - `wikipedia`: `true` para añadir también los lugares de Wikipedia de la zona, y `ocultar` con los nombres de los que no deban salir.
+2. Publica esa edición aparte (otro proyecto de Cloudflare Pages o un *fork* del repositorio con su propio dominio, por ejemplo `flyfly.lugo.es`) con la variable `VITE_CIUDAD=lugo`. El resto de variables (token de Cesium, estadísticas…) funcionan igual.
+3. Para probarla en tu ordenador: `VITE_CIUDAD=coruna npm run dev`.
+
+Requisitos habituales de la administración:
 
 - **Accesibilidad obligatoria** (Real Decreto 1112/2018): WCAG 2.1 nivel AA y la declaración de `public/legal/accesibilidad.html`, que debe completar el ayuntamiento.
 - **Esquema Nacional de Seguridad** (Real Decreto 311/2022): las administraciones suelen exigirlo a sus proveedores; pregunta qué categoría piden.

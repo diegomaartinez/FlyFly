@@ -41,7 +41,6 @@ html:has(body.ad-page) { height: auto; overflow: auto; }
 .preview-3d { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .preview-marker { left: var(--x, 50%) !important; top: var(--y, 85%) !important; pointer-events: none; }
 .ad-offer { margin-bottom: 12px; padding: 10px 14px; border-radius: 12px; background: var(--accent-soft); color: var(--ink); font-weight: 600; }
-.ad-types .limit { color: var(--ink-3); font-size: 12.5px; }
 .choice-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .choice-row label { display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 14px; border: 2px solid var(--line); border-radius: 12px; font-size: 14.5px; font-weight: 500; cursor: pointer; }
 .choice-row label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }

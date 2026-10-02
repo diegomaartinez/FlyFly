@@ -14,17 +14,12 @@ FlyFly te pone a los mandos de un ovni sobre ciudades reales en 3D. Edificios, c
 
 Los lugares más interesantes de la ciudad están escondidos. Un haz de luz y una brújula te guían hasta ellos; al acercarte, el marcador se convierte en una tarjeta con la foto y el nombre del sitio. Encuéntralos todos y descubre su historia antes de visitarlos en persona.
 
-## Dos formas de jugar
-
-- 🧭 **Turismo**: descubre los monumentos, museos y rincones con historia de la ciudad, escondidos hasta que llegas a ellos.
-- 🛍️ **Recreativo**: un mapa de negocios y particulares que se anuncian en la ciudad con su propio lugar, un globo aerostático, un ovni gigante o una avioneta con pancarta.
-
-Elige el modo en el menú principal; puedes volver a él en cualquier momento con el botón de la casa.
-
 ## ¿Qué puedes hacer?
 
 - 🌍 **Volar sobre cualquier ciudad del mundo en 3D**: escribe su nombre y despega.
 - 🎯 **Encontrar lugares escondidos**: monumentos, museos, playas, miradores y rincones con historia. Una brújula y haces de luz te dan pistas de hacia dónde volar.
+- 🔎 **Buscar como en un mapa**: escribe «cafeterías», «hoteles» o «museos» y verás los locales de la ciudad con su foto, descripción y enlace. Un toque y vuelas hasta ellos.
+- 🎈 **Negocios en el cielo**: tiendas, restaurantes y particulares se anuncian con su propio lugar, un globo aerostático, un ovni gigante o una avioneta con pancarta.
 - 📖 **Conocer cada lugar**: al descubrirlo se abre una ficha con foto, descripción y enlace a Wikipedia.
 - 🏆 **Completar la ciudad**: el menú de lugares muestra los que has descubierto y cuántos te quedan. Al encontrarlos todos verás tus estadísticas y podrás compartir tu logro.
 - ✨ **Viajar al instante**: teletranspórtate a cualquier lugar ya descubierto desde su ficha.
@@ -60,11 +55,11 @@ FlyFly es un escaparate turístico diferente: los visitantes exploran la ciudad 
 
 - Una forma divertida de conocer la ciudad antes de visitarla.
 - Una experiencia que se comparte y que atrae a público joven.
-- Próximamente: lugares, textos e imagen seleccionados por el propio ayuntamiento.
+- Una edición propia de la ciudad: con su portada, sin anuncios y solo con los lugares, textos e imágenes que elija el ayuntamiento.
 
 ## Para negocios locales
 
-Restaurantes, hoteles, tiendas, experiencias o cualquier particular pueden aparecer en el modo recreativo eligiendo su forma: **lugar con foto**, **globo aerostático**, **ovni gigante** o **avioneta con pancarta**, del color que quieran, con su propia ficha, fotos y un botón para reservar, comprar o visitar su web. Se solicita desde la página **Anúnciate**: se marca la ubicación en un mapa, se escriben los textos, se suben las fotos y se ve en 3D cómo quedará el anuncio antes de enviarlo. Todos los anuncios se revisan antes de publicarse y se identifican como patrocinados.
+Restaurantes, hoteles, tiendas, experiencias o cualquier particular pueden aparecer en el mapa eligiendo su forma: **lugar con foto**, **globo aerostático**, **ovni gigante** o **avioneta con pancarta**, del color que quieran, con su propia ficha, fotos y un botón para reservar, comprar o visitar su web. Se solicita desde la página **Anúnciate**: se marca la ubicación en un mapa, se escriben los textos, se suben las fotos y se ve en 3D cómo quedará el anuncio antes de enviarlo. Además, salen los primeros en el buscador cuando alguien busca lo que ofrecen. Todos los anuncios se revisan antes de publicarse y se identifican como patrocinados.
 
 ## Próximamente
 

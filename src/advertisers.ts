@@ -2,11 +2,11 @@ import {
   Cartesian2, Cartesian3, Cartographic, CesiumWidget, Color, ColorBlendMode, HeadingPitchRoll, Math as CMath, Matrix3, Matrix4,
   Model, SceneTransforms, Transforms,
 } from '@cesium/engine';
-import { balloonUrl, planeUrl } from './models';
+import { balloonUrl, BANNER_FONT, planeUrl } from './models';
 import { distance, Poi } from './pois';
 import { validHeight } from './world';
 
-/** Formas de aparecer en el modo recreativo (cada una con su tarifa). */
+/** Formas de aparecer de los anunciantes (cada una con su tarifa). */
 export type AdType = 'lugar' | 'globo' | 'ovni' | 'avioneta';
 
 /** Anunciante tal y como se escribe en public/data/anunciantes.json. */
@@ -28,19 +28,16 @@ export interface Advertiser {
   cta?: string;
   /** Último día visible (AAAA-MM-DD). */
   until?: string;
+  /** Categoría y palabras clave para el buscador (p. ej. ["cafetería", "desayunos"]). */
+  tags?: string[];
+  /** Importe mensual que paga: ordena los resultados del buscador (si falta, el precio de su tipo). */
+  pagado?: number;
+  /** Texto de la pancarta de la avioneta (si falta, el nombre). */
+  banner?: string;
 }
 
 const LABEL_DISTANCE = 3000; // las etiquetas se ven desde 3 km
 const RADIUS = 8000; // anunciantes a menos de 8 km del centro de la ciudad
-
-async function loadLimits(): Promise<Partial<Record<AdType, number>>> {
-  try {
-    const { tipos = {} } = await (await fetch('data/tarifas.json', { cache: 'no-cache' })).json();
-    return Object.fromEntries(Object.entries(tipos).map(([k, t]: [string, any]) => [k, Number(t.limite) || 0]));
-  } catch {
-    return {};
-  }
-}
 
 /** Anunciantes vigentes cerca de la ciudad. */
 export async function loadAdvertisers(lat: number, lng: number): Promise<Advertiser[]> {
@@ -48,15 +45,8 @@ export async function loadAdvertisers(lat: number, lng: number): Promise<Adverti
     const res = await fetch('data/anunciantes.json', { cache: 'no-cache' });
     if (!res.ok) return [];
     const list: Advertiser[] = await res.json();
-    const limits = await loadLimits();
     const today = new Date().toISOString().slice(0, 10);
-    const count: Partial<Record<AdType, number>> = {};
-    // Los tipos con plazas limitadas (tarifas.json) muestran solo los primeros de la lista en cada ciudad.
-    return list.filter((a) => {
-      if ((a.until && a.until < today) || distance(a, { lat, lng }) >= RADIUS) return false;
-      count[a.type] = (count[a.type] ?? 0) + 1;
-      return !limits[a.type] || count[a.type]! <= limits[a.type]!;
-    });
+    return list.filter((a) => (!a.until || a.until >= today) && distance(a, { lat, lng }) < RADIUS);
   } catch {
     return [];
   }
@@ -129,7 +119,10 @@ export class AdvertiserLayer {
       };
       try {
         if (ad.type === 'globo') item.model = await Model.fromGltfAsync({ url: balloonUrl(color), scale: 1.5 });
-        if (ad.type === 'avioneta') item.model = await Model.fromGltfAsync({ url: planeUrl(color), scale: 2 });
+        if (ad.type === 'avioneta') {
+          await document.fonts?.load(BANNER_FONT).catch(() => undefined);
+          item.model = await Model.fromGltfAsync({ url: planeUrl(color, ad.banner || ad.name), scale: 2 });
+        }
         if (ad.type === 'ovni') {
           item.model = await Model.fromGltfAsync({
             url: 'models/ufo.glb', scale: 6,

@@ -18,7 +18,7 @@
   <main class="ad-main">
     <section class="ad-hero">
       <h1>Pon tu negocio en el mapa</h1>
-      <p class="lead">Aparece en el modo recreativo de FlyFly, el mapa 3D que recorren los jugadores con su ovni.</p>
+      <p class="lead">Aparece en FlyFly, el mapa 3D que recorren los jugadores con su ovni, y sal el primero cuando busquen lo que ofreces.</p>
     </section>
 
     <form id="ad-form" class="ad-form" novalidate>
@@ -52,6 +52,16 @@
           <div class="field">
             <label for="ad-desc">Frase corta</label>
             <input id="ad-desc" name="frase" maxlength="60" placeholder="Ej.: Marisco y cocina gallega" />
+          </div>
+          <div class="field">
+            <label for="ad-tags">Categoría y palabras clave</label>
+            <input id="ad-tags" name="etiquetas" maxlength="120" placeholder="Ej.: cafetería, desayunos, terraza" />
+            <p class="field-help">Separadas por comas. Sirven para que te encuentren en el buscador del juego.</p>
+          </div>
+          <div id="ad-banner-field" class="field" hidden>
+            <label for="ad-banner">Texto de la pancarta</label>
+            <input id="ad-banner" name="pancarta" maxlength="28" placeholder="Ej.: ¡Conciertos en julio!" />
+            <p class="field-help">Hasta 28 caracteres. Si lo dejas vacío, se pone el nombre.</p>
           </div>
           <div class="field">
             <label for="ad-text">Texto de la ficha</label>

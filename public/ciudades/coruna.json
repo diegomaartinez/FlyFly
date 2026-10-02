@@ -1,0 +1,22 @@
+{
+  "name": "A Coruña",
+  "detail": "Galicia, España",
+  "lat": 43.3713,
+  "lng": -8.396,
+  "title": "Sobrevuela A Coruña",
+  "subtitle": "Pilota un ovni sobre la ciudad en 3D y descubre sus rincones más especiales antes de visitarlos.",
+  "logo": "",
+  "start": "Despegar",
+  "wikipedia": false,
+  "ocultar": [],
+  "lugares": [
+    { "id": "torre", "name": "Torre de Hércules", "lat": 43.3859, "lng": -8.4065, "description": "Faro romano en uso, Patrimonio de la Humanidad", "wiki": "Torre de Hércules" },
+    { "id": "maria-pita", "name": "Plaza de María Pita", "lat": 43.3707, "lng": -8.3959, "description": "La plaza del Ayuntamiento", "wiki": "Plaza de María Pita" },
+    { "id": "san-anton", "name": "Castillo de San Antón", "lat": 43.3664, "lng": -8.3887, "description": "Fortaleza del siglo XVI y museo arqueológico", "wiki": "Castillo de San Antón" },
+    { "id": "marina", "name": "Avenida de la Marina", "lat": 43.3693, "lng": -8.3992, "description": "Las galerías acristaladas de la ciudad de cristal", "wiki": "Avenida de la Marina (La Coruña)" },
+    { "id": "san-carlos", "name": "Jardín de San Carlos", "lat": 43.3711, "lng": -8.3912, "description": "Jardín romántico con la tumba de Sir John Moore", "wiki": "Jardín de San Carlos" },
+    { "id": "riazor", "name": "Playa de Riazor", "lat": 43.369, "lng": -8.406, "description": "Playa urbana junto al paseo marítimo", "wiki": "Playa de Riazor" },
+    { "id": "aquarium", "name": "Aquarium Finisterrae", "lat": 43.3818, "lng": -8.4085, "description": "Museo del mar con la sala Nautilus", "wiki": "Aquarium Finisterrae" },
+    { "id": "san-pedro", "name": "Monte de San Pedro", "lat": 43.3763, "lng": -8.4205, "description": "Mirador con cúpula y vistas a toda la bahía", "wiki": "Parque del Monte de San Pedro" }
+  ]
+}

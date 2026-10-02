@@ -35,6 +35,7 @@
       <button id="auto-btn" class="chip chip-auto" hidden aria-pressed="false">
         <span id="auto-icon" data-icon="path"></span><span id="auto-label">Exploración automática</span>
       </button>
+      <button id="finder-btn" class="icon-btn" aria-label="Buscar en la ciudad" title="Buscar en la ciudad"><span data-icon="search"></span></button>
       <button id="menu-btn" class="chip chip-progress" aria-label="Ver lugares descubiertos">
         <span data-icon="target"></span><b id="visited">0</b><span class="muted">de <span id="total">0</span></span>
       </button>
@@ -82,6 +83,21 @@
   </aside>
 
   <!-- Lugares de la ciudad -->
+  <aside id="finder" class="drawer finder" aria-labelledby="finder-title" hidden>
+    <div class="drawer-head">
+      <h2 id="finder-title">Buscar en <span id="finder-city"></span></h2>
+      <button id="finder-close" class="icon-btn" aria-label="Cerrar"><span data-icon="close"></span></button>
+    </div>
+    <form id="finder-form" class="search-row finder-form" autocomplete="off" role="search">
+      <span class="search-icon" data-icon="search"></span>
+      <input id="finder-input" type="search" placeholder="Cafeterías, hoteles, museos…" enterkeyhint="search" aria-label="Qué buscas" />
+      <button class="btn btn-primary" type="submit">Buscar</button>
+    </form>
+    <div id="finder-chips" class="finder-chips"></div>
+    <p id="finder-status" class="field-help" role="status"></p>
+    <ul id="finder-results" class="finder-results"></ul>
+  </aside>
+
   <aside id="drawer" class="drawer" aria-labelledby="drawer-title" hidden>
     <div class="drawer-head">
       <h2 id="drawer-title"><span id="drawer-kind">Lugares</span> de <span id="drawer-city"></span></h2>
@@ -216,17 +232,10 @@
   <div id="intro" class="screen screen-intro">
     <div class="intro-panel">
       <button id="intro-close" class="icon-btn intro-close" aria-label="Volver al vuelo" hidden><span data-icon="close"></span></button>
-      <div class="brand"><span class="brand-mark" data-icon="ufo"></span>FlyFly</div>
-      <h1>Sobrevuela cualquier ciudad del mundo</h1>
-      <p class="lead">Pilota un ovni sobre ciudades reales en 3D y encuentra los lugares escondidos.</p>
-      <div class="mode-picker" role="radiogroup" aria-label="Modo de juego">
-        <button type="button" role="radio" data-mode="turismo">
-          <span data-icon="compass"></span><b>Turismo</b><small>Descubre monumentos y rincones con historia</small>
-        </button>
-        <button type="button" role="radio" data-mode="recreativo">
-          <span data-icon="storefront"></span><b>Recreativo</b><small>Negocios y anunciantes de la ciudad</small>
-        </button>
-      </div>
+      <div class="brand"><img id="city-logo" class="city-logo" alt="" hidden /><span class="brand-mark" data-icon="ufo"></span>FlyFly</div>
+      <h1 id="intro-title">Sobrevuela cualquier ciudad del mundo</h1>
+      <p id="intro-lead" class="lead">Pilota un ovni sobre ciudades reales en 3D, encuentra los lugares escondidos y descubre los negocios de cada ciudad.</p>
+      <button id="start-btn" class="btn btn-primary btn-start" type="button" hidden>Despegar</button>
       <form id="search" class="search" autocomplete="off">
         <label for="search-input">¿A dónde vamos?</label>
         <div class="search-row">
@@ -241,7 +250,7 @@
         <h3>Recientes</h3>
         <div id="recent-list" class="recent-list"></div>
       </div>
-      <p id="advertise-note" class="note-cta" hidden>¿Tienes un negocio o quieres salir en el mapa? <a href="anunciate.html" target="_blank" rel="noopener">Anúnciate en FlyFly</a></p>
+      <p id="advertise-note" class="note-cta">¿Tienes un negocio o quieres salir en el mapa? <a href="anunciate.html" target="_blank" rel="noopener">Anúnciate en FlyFly</a></p>
       <p id="mode-note" class="note"></p>
       <nav class="legal-links" aria-label="Información legal">
         <a href="legal/aviso-legal.html" target="_blank" rel="noopener">Aviso legal</a>
