@@ -6,6 +6,7 @@ import './anunciate.css';
 import L from 'leaflet';
 import { track } from './analytics';
 import { hydrateIcons } from './icons';
+import { MAPS_LINK } from './maps';
 import { AdPreview3D } from './preview3d';
 
 type AdType = 'lugar' | 'globo' | 'ovni' | 'avioneta';
@@ -206,7 +207,7 @@ function buildEntry() {
     color2: type === 'globo' ? value('ad-color2') : undefined,
     basket: type === 'globo' ? value('ad-basket') : undefined,
     images: photos.map((f, i) => `anunciantes/${id}-${i + 1}.${f.type.split('/')[1].replace('jpeg', 'jpg')}`),
-    link: value('ad-link') || undefined, cta: value('ad-cta'), until: until.toISOString().slice(0, 10),
+    link: value('ad-link') || undefined, maps: value('ad-maps') || undefined, cta: value('ad-cta'), until: until.toISOString().slice(0, 10),
   };
 }
 
@@ -215,6 +216,8 @@ function validate(): string {
   if (!value('ad-name')) return 'Escribe el nombre del negocio.';
   const link = value('ad-link');
   if (link && !/^https?:\/\/.+\..+/.test(link)) return 'El enlace debe empezar por https://';
+  const maps = value('ad-maps');
+  if (maps && !MAPS_LINK.test(maps)) return 'El enlace de Google Maps no es válido. Cópialo desde «Compartir» en la ficha de tu negocio.';
   if (!value('ad-contact')) return 'Indica una persona de contacto.';
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value('ad-email'))) return 'Escribe un email válido.';
   if (!value('ad-nif')) return 'Indica el NIF, CIF o DNI para la factura.';

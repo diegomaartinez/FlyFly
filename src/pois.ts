@@ -10,6 +10,8 @@ export interface Sponsor {
   link?: string;
   /** Color del recuadro elegido por el anunciante. */
   color?: string;
+  /** Enlace de Google Maps (cómo llegar). */
+  maps?: string;
 }
 
 export interface Poi {

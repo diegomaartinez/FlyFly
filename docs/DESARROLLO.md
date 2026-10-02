@@ -62,7 +62,9 @@ Botón de la lupa en el vuelo: busca «cafeterías», «hotel», «pizza»… Re
 2. En la edición de ciudad, sus lugares que coinciden.
 3. Locales de OpenStreetMap a menos de 6 km (Overpass API), por cercanía, sin repetir anunciantes.
 
-Cada resultado muestra foto (si la hay), nombre, descripción, distancia, enlace y un botón «Ir» que teletransporta el ovni.
+Cada resultado muestra foto (si la hay), nombre, descripción, distancia, enlace y un botón «Ir» que teletransporta el ovni. Los anunciantes llevan además un botón de Google Maps (`maps` de su anuncio o, si falta, un enlace a sus coordenadas), que también aparece en su ficha como «Cómo llegar».
+
+Rapidez: los anunciantes y lugares propios salen al momento (los anunciantes se descargan una vez por ciudad) y los locales de OpenStreetMap se añaden al llegar. Las búsquedas a Overpass se guardan en memoria, cancelan la anterior y, si el servidor principal tarda más de 2,5 s, se pregunta también a `overpass.kumi.systems` y se usa la primera respuesta.
 
 ## Anunciantes
 
@@ -87,7 +89,7 @@ Formato de `public/data/anunciantes.json`:
     "description": "Vistas al mar en pleno centro", "text": "Texto de la ficha",
     "images": ["anunciantes/hotel-atlantico-1.jpg"],
     "link": "https://ejemplo.com", "cta": "Reservar", "until": "2026-12-31",
-    "tags": ["hotel", "alojamiento"], "pagado": 12,
+    "tags": ["hotel", "alojamiento"], "pagado": 12, "maps": "https://maps.app.goo.gl/…",
     "color2": "#ffffff", "basket": "#6b4226",
     "banner": "Solo avioneta: texto", "bannerColor": "#ffffff"
   }

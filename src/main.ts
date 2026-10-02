@@ -9,7 +9,7 @@ import { adsEnabled, manageConsent, showAd } from './ads';
 import { AdvertiserLayer, loadAdvertisers } from './advertisers';
 import { track } from './analytics';
 import { CITY_ID, loadEdition, loadEditionPois } from './edition';
-import { searchPlaces, SUGGESTIONS } from './finder';
+import { FinderResult, searchPlaces, SUGGESTIONS, warmFinder } from './finder';
 import { bearing, distance, fetchImageCredit, fetchSummary, formatDistance, FoundVisibility, loadCityPois, loadSponsors, Poi, PoiLayer, wikiUrl } from './pois';
 import { createWorld, geocode, GeoResult, groundHeight, waitForPreload, initialQuality, Quality, setQuality, World } from './world';
 // Sonido desactivado (para reactivarlo, descomenta las líneas marcadas con "Sonido").
@@ -412,6 +412,7 @@ async function openSheet(poi: Poi, fromDiscovery = false) {
   if (poi.id.startsWith('ad_')) track('anuncio-ficha', { anuncio: poi.id.slice(3) });
   sheetFromDiscovery = fromDiscovery;
   closeDrawer();
+  closeFinder();
   closePopovers();
   const img = $<HTMLImageElement>('sheet-img');
   $('sheet').classList.toggle('no-media', !poi.image);
@@ -445,6 +446,9 @@ async function openSheet(poi: Poi, fromDiscovery = false) {
     cta.href = poi.sponsor.link;
     cta.textContent = poi.sponsor.cta ?? 'Visitar web';
   }
+  const maps = $<HTMLAnchorElement>('sheet-maps');
+  maps.hidden = !poi.sponsor?.maps;
+  if (poi.sponsor?.maps) maps.href = poi.sponsor.maps;
   const travelBtn = $('sheet-travel');
   travelBtn.hidden = !(pois.isDiscovered(poi) || poi.id.startsWith('ad_')) || distance(ufo, poi) < 300;
   travelBtn.onclick = () => travelTo(poi);
@@ -490,6 +494,9 @@ $('sheet-close').onclick = closeSheet;
 ads.onSelect = (poi) => openSheet(poi);
 // Estadísticas anónimas para los anunciantes: veces que se ha visto su anuncio, se ha abierto su ficha y se ha pulsado su botón.
 ads.onSeen = (ad) => track('anuncio-visto', { anuncio: ad.id, tipo: ad.type });
+$('sheet-maps').addEventListener('click', () => {
+  if (openPoi?.id.startsWith('ad_')) track('anuncio-mapa', { anuncio: openPoi.id.slice(3) });
+});
 $('sheet-cta').addEventListener('click', () => {
   if (openPoi?.id.startsWith('ad_')) track('anuncio-clic', { anuncio: openPoi.id.slice(3) });
 });
@@ -564,6 +571,7 @@ function openFinder() {
   closeSheet();
   closeDrawer();
   $('finder').hidden = false;
+  if (currentCity) warmFinder(currentCity, !edition);
   const input = $<HTMLInputElement>('finder-input');
   input.focus();
   input.select();
@@ -589,52 +597,64 @@ let finderRun = 0;
 async function runFinder(query: string) {
   if (!query || !currentCity) return;
   const run = ++finderRun;
+  const city = currentCity;
   const list = $('finder-results');
   list.innerHTML = '';
   $('finder-status').textContent = 'Buscando…';
-  track('busqueda', { texto: query.toLowerCase().slice(0, 40), ciudad: currentCity.name });
+  track('busqueda', { texto: query.toLowerCase().slice(0, 40), ciudad: city.name });
   // En la edición de ciudad también se buscan sus lugares (en la general, los de Wikipedia se descubren volando).
   const own = edition ? [...pois.pois.values()].filter((p) => p.id.startsWith('c_')) : [];
-  const { results, osmFailed } = await searchPlaces(query, currentCity, ufo, { ads: !edition, places: own });
-  if (run !== finderRun) return;
-  $('finder-status').textContent = results.length
-    ? `${results.length} ${results.length === 1 ? 'resultado' : 'resultados'}${osmFailed ? ' (sin los locales de OpenStreetMap, que no responden ahora)' : ''}`
-    : osmFailed ? 'La búsqueda de locales no está disponible ahora mismo. Inténtalo de nuevo.' : `No encontré «${query}» en ${currentCity.name}.`;
-  for (const r of results) {
-    const li = document.createElement('li');
-    li.className = `result${r.sponsored ? ' is-sponsored' : ''}`;
-    if (r.color) li.style.setProperty('--brand', r.color);
-    li.innerHTML = `
-      <button type="button" class="result-main">
-        <span class="result-photo">${r.image ? '<img alt="" loading="lazy" />' : icon(r.sponsored ? 'storefront' : r.kind === 'lugar' ? 'pin' : 'storefront')}</span>
-        <span class="result-text"><b></b><small></small><span class="result-desc"></span></span>
-      </button>
-      <div class="result-actions"></div>`;
-    if (r.image) li.querySelector('img')!.src = r.image;
-    li.querySelector('b')!.textContent = r.name;
-    li.querySelector('small')!.textContent = [r.sponsored ? 'Patrocinado' : r.kind === 'lugar' ? 'Lugar de interés' : '', formatDistance(distance(ufo, r))].filter(Boolean).join(' · ');
-    li.querySelector('.result-desc')!.textContent = r.description ?? '';
-    const poi: Poi = r.poi ?? { id: r.id, name: r.name, lat: r.lat, lng: r.lng, description: r.description, url: r.link };
-    li.querySelector<HTMLButtonElement>('.result-main')!.onclick = () => (r.poi ? openSheet(r.poi) : travelTo(poi));
-    const actions = li.querySelector('.result-actions')!;
-    if (r.link) {
-      const a = document.createElement('a');
-      a.className = 'btn btn-secondary btn-sm';
-      a.href = r.link;
-      a.target = '_blank';
-      a.rel = r.sponsored ? 'noopener sponsored' : 'noopener';
-      a.innerHTML = `${r.cta ?? 'Web'} ${icon('external')}`;
-      if (r.sponsored) a.onclick = () => track('anuncio-clic', { anuncio: r.id, origen: 'buscador' });
-      actions.append(a);
-    }
-    const go = document.createElement('button');
-    go.type = 'button';
-    go.className = 'btn btn-primary btn-sm';
-    go.innerHTML = `${icon('travel')} Ir`;
-    go.onclick = () => travelTo(poi);
-    actions.append(go);
-    list.append(li);
-  }
+  let shown = 0;
+  // Primero salen al momento los anunciantes (y lugares propios); los locales de OpenStreetMap se añaden al llegar.
+  await searchPlaces(query, city, ufo, { ads: !edition, places: own }, ({ results, pending, osmFailed }) => {
+    if (run !== finderRun) return;
+    for (const r of results.slice(shown)) list.append(renderResult(r));
+    shown = results.length;
+    const count = `${results.length} ${results.length === 1 ? 'resultado' : 'resultados'}`;
+    $('finder-status').textContent = pending
+      ? results.length ? `${count}. Buscando más locales…` : 'Buscando…'
+      : results.length
+        ? `${count}${osmFailed ? ' (sin los locales de OpenStreetMap, que no responden ahora)' : ''}`
+        : osmFailed ? 'La búsqueda de locales no está disponible ahora mismo. Inténtalo de nuevo.' : `No encontré «${query}» en ${city.name}.`;
+  });
+}
+
+function renderResult(r: FinderResult): HTMLLIElement {
+  const li = document.createElement('li');
+  li.className = `result${r.sponsored ? ' is-sponsored' : ''}`;
+  if (r.color) li.style.setProperty('--brand', r.color);
+  li.innerHTML = `
+    <button type="button" class="result-main">
+      <span class="result-photo">${r.image ? '<img alt="" loading="lazy" />' : icon(r.kind === 'lugar' ? 'pin' : 'storefront')}</span>
+      <span class="result-text"><b></b><small></small><span class="result-desc"></span></span>
+    </button>
+    <div class="result-actions"></div>`;
+  if (r.image) li.querySelector('img')!.src = r.image;
+  li.querySelector('b')!.textContent = r.name;
+  li.querySelector('small')!.textContent = [r.sponsored ? 'Patrocinado' : r.kind === 'lugar' ? 'Lugar de interés' : '', formatDistance(distance(ufo, r))].filter(Boolean).join(' · ');
+  li.querySelector('.result-desc')!.textContent = r.description ?? '';
+  const poi: Poi = r.poi ?? { id: r.id, name: r.name, lat: r.lat, lng: r.lng, description: r.description, url: r.link };
+  li.querySelector<HTMLButtonElement>('.result-main')!.onclick = () => (r.poi ? openSheet(r.poi) : travelTo(poi));
+  const actions = li.querySelector('.result-actions')!;
+  const link = (href: string, html: string, onClick?: () => void) => {
+    const a = document.createElement('a');
+    a.className = 'btn btn-secondary btn-sm';
+    a.href = href;
+    a.target = '_blank';
+    a.rel = r.sponsored ? 'noopener sponsored' : 'noopener';
+    a.innerHTML = html;
+    if (onClick) a.onclick = onClick;
+    actions.append(a);
+  };
+  if (r.link) link(r.link, `${r.cta ?? 'Web'} ${icon('external')}`, r.sponsored ? () => track('anuncio-clic', { anuncio: r.id, origen: 'buscador' }) : undefined);
+  if (r.maps) link(r.maps, `${icon('pin')} Maps`, () => track('anuncio-mapa', { anuncio: r.id, origen: 'buscador' }));
+  const go = document.createElement('button');
+  go.type = 'button';
+  go.className = 'btn btn-primary btn-sm';
+  go.innerHTML = `${icon('travel')} Ir`;
+  go.onclick = () => travelTo(poi);
+  actions.append(go);
+  return li;
 }
 
 // ---------- Ajustes y controles ----------

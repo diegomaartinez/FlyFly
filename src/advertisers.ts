@@ -2,6 +2,7 @@ import {
   Cartesian2, Cartesian3, Cartographic, CesiumWidget, Color, ColorBlendMode, HeadingPitchRoll, Math as CMath, Matrix3, Matrix4,
   Model, SceneTransforms, Transforms,
 } from '@cesium/engine';
+import { mapsUrl } from './maps';
 import { balloonUrl, BANNER_FONT, planeUrl } from './models';
 import { distance, Poi } from './pois';
 import { validHeight } from './world';
@@ -25,6 +26,8 @@ export interface Advertiser {
   /** Fotos (la primera es la principal). */
   images?: string[];
   link?: string;
+  /** Enlace de Google Maps de su ficha (si falta, se genera con las coordenadas). */
+  maps?: string;
   cta?: string;
   /** Último día visible (AAAA-MM-DD). */
   until?: string;
@@ -65,9 +68,10 @@ export function advertiserPoi(a: Advertiser): Poi {
   return {
     id: `ad_${a.id}`, name: a.name, lat: a.lat, lng: a.lng, description: a.description,
     image: a.images?.[0], thumb: a.images?.[0], body: a.text, gallery: a.images,
-    sponsor: { tier: 'gold', cta: a.cta, link: a.link, color: a.color },
+    sponsor: { tier: 'gold', cta: a.cta, link: a.link, color: a.color, maps: mapsUrl(a) },
   };
 }
+
 
 interface Item {
   ad: Advertiser;
