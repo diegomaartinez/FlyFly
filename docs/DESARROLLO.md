@@ -108,8 +108,9 @@ Para publicar una solicitud descargada: `node scripts/importar-anuncio.mjs solic
 En el menú la Tierra gira despacio y el ovni llega desde lejos y se queda a la derecha (se coloca cada fotograma respecto a la cámara). Al despegar:
 
 1. **Arranque de motores** (mínimo 1,8 s, máximo 9 s): el ovni vibra, gira rápido y destella mientras se piden los lugares, los anunciantes y la altura del suelo.
-2. **Vuelo** (5 s, 6,5 s desde el espacio): `camera.flyTo` hasta la posición de juego sobre la ciudad a 500 m, con el ovni pasando de la derecha al centro. Cesium precarga las teselas del destino durante el vuelo (`preloadFlightDestinations`).
-3. **Llegada**: el juego toma el control y los últimos edificios y los anunciantes terminan de cargar mientras se vuela (aviso «Cargando la ciudad» abajo).
+2. **Carga de la ciudad** (hasta 25 s, aviso «Cargando A Coruña X %»): `IntroScene.prepare` lanza un `camera.flyTo` al destino cuyo avance queda congelado en 0; mientras dura, Cesium descarga las teselas de la vista de destino (`preloadFlightDestinations`). `waitForPreload` (`src/world.ts`) espera a que no quede nada pendiente.
+3. **Vuelo** (5 s, 6,5 s desde el espacio): `IntroScene.launch` libera el vuelo hasta la posición de juego a 500 m, con el ovni pasando de la derecha al centro; la ciudad ya está cargada al llegar.
+4. **Llegada**: el juego toma el control; los anunciantes se colocan y se terminan los detalles que falten.
 
 Con «reducir movimiento» del sistema no hay vibración ni giro de la Tierra y el vuelo dura 1,5 s.
 
@@ -119,13 +120,13 @@ Al elegir una ciudad se cargan de golpe hasta 80 lugares de Wikipedia (centro + 
 
 | Distancia al ovni | Estado | Se ve |
 |---|---|---|
-| > 2 km | oculto | nada (solo la brújula) |
-| 2 km - 50 m | misterio | solo el marcador "?" naranja |
+| > 400 m | oculto | nada (solo la brújula) |
+| 400 m - 50 m | misterio | solo el marcador "?" naranja |
 | < 50 m | descubierto | tarjeta con foto, nombre y descripción (píldora compacta a más de 700 m) |
 
 Los marcadores son elementos HTML (`#markers`) que se recolocan en cada fotograma con `SceneTransforms.worldToWindowCoordinates`; su altura se mide con `sampleHeightMostDetailed` (35 m sobre el suelo o el tejado).
 
-Los descubiertos se muestran según Ajustes: cercanos (menos de 400 m, por defecto), todos o ninguno (`PoiLayer.foundVisibility`).
+Ajustes → «Lugares en el mapa» (`PoiLayer.foundVisibility`) se aplica a descubiertos y por descubrir: **cercanos** (por defecto: descubiertos e interrogaciones a menos de 400 m, como en la tabla), **todos** (sin límite de distancia) o **ninguno** (solo la brújula; se siguen descubriendo al llegar). Los patrocinados y los anunciantes se ven siempre.
 
 El progreso se guarda en el navegador (`localStorage`) y se puede reiniciar desde Ajustes. Por ciudad se guardan también la fecha del primer descubrimiento, la de finalización y los km recorridos (`flyfly:cities`), que se muestran en la pantalla de ciudad completada.
 

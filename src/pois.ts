@@ -101,16 +101,19 @@ export async function fetchImageCredit(imageUrl: string): Promise<ImageCredit | 
 // ---------- Descubrimiento y marcadores ----------
 
 // Los lugares por descubrir solo se ven como un "?" naranja (sin haz de luz ni tarjeta) hasta llegar a ellos.
-const REVEAL_DISTANCE = 2000; // aparece el marcador "?"
 const DISCOVER_DISTANCE = 50; // se descubre (hay que llegar al sitio)
 const SPONSOR_VISIBLE = 3000; // los patrocinados se ven desde más lejos
 const COMPACT_DISTANCE = 700; // más allá, la tarjeta se reduce a una píldora
 const MARKER_HEIGHT = 35; // metros sobre el suelo o el tejado
 const STORAGE_KEY = 'flyfly:discovered';
 
-/** Qué lugares ya descubiertos se muestran en el mapa (Ajustes). */
+/**
+ * Qué lugares se muestran en el mapa (Ajustes), tanto descubiertos como por descubrir.
+ * Los patrocinados se ven siempre. Hasta qué distancia (m) en cada caso:
+ */
 export type FoundVisibility = 'todos' | 'cercanos' | 'ninguno';
 const FOUND_VISIBLE: Record<FoundVisibility, number> = { todos: Infinity, cercanos: 400, ninguno: -1 };
+const MYSTERY_VISIBLE: Record<FoundVisibility, number> = { todos: Infinity, cercanos: 400, ninguno: -1 };
 
 type State = 'hidden' | 'mystery' | 'found';
 
@@ -213,9 +216,9 @@ export class PoiLayer {
       if (!discovered && !poi.sponsor && (!target || m.dist < target.dist)) target = { poi, dist: m.dist };
 
       let state: State = 'hidden';
-      if (discovered) state = m.dist < FOUND_VISIBLE[this.foundVisibility] ? 'found' : 'hidden';
-      else if (poi.sponsor) state = m.dist < SPONSOR_VISIBLE ? 'found' : 'hidden';
-      else if (m.dist < REVEAL_DISTANCE) state = 'mystery';
+      if (poi.sponsor) state = m.dist < SPONSOR_VISIBLE ? 'found' : 'hidden';
+      else if (discovered) state = m.dist < FOUND_VISIBLE[this.foundVisibility] ? 'found' : 'hidden';
+      else if (m.dist < MYSTERY_VISIBLE[this.foundVisibility]) state = 'mystery';
       this.setState(m, state);
 
       if (state !== 'hidden' && m.ground === undefined && !m.sampling) this.sampleGround(m, exclude);

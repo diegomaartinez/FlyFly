@@ -11,7 +11,7 @@ import { track } from './analytics';
 import { CITY_ID, loadEdition, loadEditionPois } from './edition';
 import { searchPlaces, SUGGESTIONS } from './finder';
 import { bearing, distance, fetchImageCredit, fetchSummary, formatDistance, FoundVisibility, loadCityPois, loadSponsors, Poi, PoiLayer, wikiUrl } from './pois';
-import { createWorld, geocode, GeoResult, groundHeight, initialQuality, Quality, setQuality, World } from './world';
+import { createWorld, geocode, GeoResult, groundHeight, waitForPreload, initialQuality, Quality, setQuality, World } from './world';
 // Sonido desactivado (para reactivarlo, descomenta las líneas marcadas con "Sonido").
 // import { EngineSound } from './sound'; // Sonido
 import { Matrix4 } from '@cesium/engine';
@@ -347,21 +347,21 @@ async function flyTo(place: GeoResult): Promise<number> {
 
   ufo.teleport(place.lat, place.lng, await Promise.race([ground, timeout(0, 0)]), CITY_ALTITUDE);
   ufo.heading = 0;
+  // La ciudad se descarga antes de salir: el ovni sigue arrancando motores en el menú mientras tanto.
+  intro.prepare(ufo.lat, ufo.lng, ufo.height, ufo.chaseView);
+  launchStatus(`Cargando ${place.name}…`);
+  await waitForPreload(world, (f) => currentCity === city && launchStatus(`Cargando ${place.name} ${Math.round(f * 100)} %`));
+  if (currentCity !== city) return 0;
   launchStatus(`Rumbo a ${place.name}`);
-  await intro.fly(ufo.lat, ufo.lng, ufo.height, ufo.chaseView);
+  await intro.launch();
   if (currentCity !== city) return 0;
   intro.stop();
   ufo.snapCamera();
   updateHud();
   const adList = await advertisers.catch(() => []);
-  // Ya se puede jugar; los últimos edificios y los anunciantes terminan de cargar mientras tanto.
-  void (async () => {
-    launchStatus('Cargando la ciudad…');
-    await ads.add(adList, ufo.excluded);
-    if (currentCity !== city) return;
-    await loadTiles(world, (f) => currentCity === city && launchStatus(`Cargando la ciudad ${Math.round(f * 100)} %`), 6000);
-    if (currentCity === city) launchStatus('');
-  })();
+  // Ya se puede jugar (la ciudad se cargó antes de salir); los anunciantes se colocan sobre el terreno.
+  launchStatus('');
+  void ads.add(adList, ufo.excluded).then(() => currentCity !== city && ads.clear());
   return adList.length;
 }
 

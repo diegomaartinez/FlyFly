@@ -161,3 +161,36 @@ function split(displayName: string, lat: number, lng: number): GeoResult {
   const [name, ...rest] = displayName.split(',').map((t) => t.trim());
   return { name, detail: rest.slice(-3).join(', '), lat, lng };
 }
+
+/**
+ * Espera a que Cesium termine de descargar las teselas del destino de un vuelo preparado
+ * (`IntroScene.prepare`), informando del avance de 0 a 1. Como mucho `maxMs`.
+ */
+export function waitForPreload(world: World, onProgress: (f: number) => void, maxMs = 25000): Promise<void> {
+  const { tileset, viewer } = world;
+  if (!tileset) return new Promise((r) => setTimeout(r, 1200)); // modo plano: la ortofoto carga al vuelo
+  // Estadísticas internas de Cesium: peticiones en curso (de todas las pasadas) y peticiones que la pasada
+  // de precarga del vuelo (Cesium3DTilePass.PRELOAD_FLIGHT = 4) aún no ha podido lanzar.
+  type Stats = { numberOfPendingRequests: number; numberOfTilesProcessing: number; numberOfAttemptedRequests: number };
+  const internal = tileset as unknown as { statistics: Stats; _statisticsPerPass?: Stats[] };
+  const flightPass = internal._statisticsPerPass?.[4];
+  const start = performance.now();
+  let max = 1, calm = 0;
+  return new Promise((resolve) => {
+    const off = viewer.scene.postRender.addEventListener(() => {
+      const { numberOfPendingRequests, numberOfTilesProcessing } = internal.statistics;
+      const waiting = flightPass?.numberOfAttemptedRequests ?? 0;
+      const left = numberOfPendingRequests + numberOfTilesProcessing + waiting;
+      max = Math.max(max, left);
+      onProgress(1 - left / max);
+      calm = left === 0 ? calm + 1 : 0;
+      const elapsed = performance.now() - start;
+      // Hecho cuando lleva varios fotogramas sin nada pendiente (y al menos 1,5 s para que empiecen las peticiones).
+      if ((calm > 20 && elapsed > 1500) || elapsed > maxMs) {
+        off();
+        onProgress(1);
+        resolve();
+      }
+    });
+  });
+}

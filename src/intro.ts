@@ -28,6 +28,9 @@ export class IntroScene {
   private spin = 0;
   private spinRate = 0.8;
   private flight = { start: 0, duration: 6 };
+  private done: Promise<void> = Promise.resolve();
+  private finish: () => void = () => {};
+  private arrived = false;
   private last = performance.now();
   private readonly still = matchMedia('(prefers-reduced-motion: reduce)').matches;
   private readonly scratch: Camera;
@@ -54,8 +57,12 @@ export class IntroScene {
     this.phase = 'warmup';
   }
 
-  /** Vuela la cámara (con el ovni delante) hasta la posición de juego sobre la ciudad. */
-  fly(lat: number, lng: number, height: number, view: { heading: number; pitch: number; range: number }): Promise<void> {
+  /**
+   * Prepara el vuelo hasta la posición de juego sobre la ciudad sin moverse todavía: el vuelo de la
+   * cámara queda "en pausa" al principio, y mientras tanto Cesium descarga las teselas del destino
+   * (precarga de destinos de vuelo). Cuando estén, `launch()` lo pone en marcha.
+   */
+  prepare(lat: number, lng: number, height: number, view: { heading: number; pitch: number; range: number }) {
     const { camera } = this.viewer;
     this.scratch.lookAt(Cartesian3.fromDegrees(lng, lat, height), new HeadingPitchRange(view.heading, view.pitch, view.range));
     const destination = Cartesian3.clone(this.scratch.positionWC);
@@ -63,10 +70,23 @@ export class IntroScene {
     this.scratch.lookAtTransform(Matrix4.IDENTITY);
     camera.lookAtTransform(Matrix4.IDENTITY);
     const duration = this.still ? 1.5 : Cartesian3.distance(camera.positionWC, destination) > 3_000_000 ? 6.5 : 5;
-    this.flight = { start: performance.now(), duration };
+    this.flight = { start: Infinity, duration };
+    this.arrived = false;
+    this.done = new Promise((resolve) => (this.finish = resolve));
+    // La duración del vuelo de Cesium es solo un máximo: el avance real lo marca `flightProgress`.
+    camera.flyTo({
+      destination, orientation, duration: 3600,
+      easingFunction: () => this.flightProgress(performance.now()),
+      complete: () => this.finish(), cancel: () => this.finish(),
+    });
+  }
+
+  /** Arranca el vuelo preparado (5-7 s). Se resuelve al llegar o si se cancela (p. ej. al volver al menú). */
+  launch(): Promise<void> {
+    this.flight.start = performance.now();
     this.phase = 'flight';
     this.glow(0);
-    return new Promise((resolve) => camera.flyTo({ destination, orientation, duration, complete: resolve, cancel: resolve }));
+    return this.done;
   }
 
   /** Fin de la animación: el ovni pasa a manos del juego. */
@@ -77,7 +97,7 @@ export class IntroScene {
 
   /** Avance del vuelo (0-1, suavizado) según el reloj, igual que el vuelo de la cámara. */
   private flightProgress(now: number) {
-    return ease(Math.min(1, (now - this.flight.start) / 1000 / this.flight.duration));
+    return ease(Math.min(1, Math.max(0, (now - this.flight.start) / 1000 / this.flight.duration)));
   }
 
   /**
@@ -116,6 +136,12 @@ export class IntroScene {
       glow = 0.5 + 0.5 * Math.sin(now / 90);
     } else {
       const p = this.flightProgress(now);
+      if (p >= 1 && !this.arrived) {
+        // Llegada: se termina el vuelo de la cámara (queda en el destino) fuera de este fotograma.
+        this.arrived = true;
+        this.finish();
+        setTimeout(() => camera.cancelFlight());
+      }
       const range = this.ufo.chaseView.range;
       dist = NEAR + (range - NEAR) * p;
       right = RIGHT * (1 - p);
