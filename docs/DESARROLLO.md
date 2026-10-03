@@ -109,12 +109,12 @@ Para publicar una solicitud descargada: `node scripts/importar-anuncio.mjs solic
 
 En el menú la Tierra gira despacio y el ovni llega desde lejos y se queda a la derecha (se coloca cada fotograma respecto a la cámara). Al despegar:
 
-1. **Arranque de motores** (mínimo 1,8 s, máximo 9 s): el ovni vibra, gira rápido y destella mientras se piden los lugares, los anunciantes y la altura del suelo.
+1. **Arranque de motores** (mínimo 1,8 s, máximo 9 s): el ovni vibra, gira rápido y destella mientras se piden los lugares, los anunciantes y la altura del suelo. Durante este paso y el siguiente, nubes (billboards de Cesium con una textura generada en un canvas) pasan a toda velocidad alrededor del ovni, como si viajara hacia la Tierra; se desvanecen al empezar el vuelo.
 2. **Carga de la ciudad** (hasta 25 s, aviso «Cargando A Coruña X %»): `IntroScene.prepare` lanza un `camera.flyTo` al destino cuyo avance queda congelado en 0; mientras dura, Cesium descarga las teselas de la vista de destino (`preloadFlightDestinations`). `waitForPreload` (`src/world.ts`) espera a que no quede nada pendiente.
 3. **Vuelo** (5 s, 6,5 s desde el espacio): `IntroScene.launch` libera el vuelo hasta la posición de juego a 500 m, con el ovni pasando de la derecha al centro; la ciudad ya está cargada al llegar.
 4. **Llegada**: el juego toma el control; los anunciantes se colocan y se terminan los detalles que falten.
 
-Con «reducir movimiento» del sistema no hay vibración ni giro de la Tierra y el vuelo dura 1,5 s.
+Con «reducir movimiento» del sistema no hay vibración, nubes ni giro de la Tierra y el vuelo dura 1,5 s.
 
 ## Mecánica de juego
 

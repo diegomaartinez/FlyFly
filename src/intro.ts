@@ -1,11 +1,13 @@
 /**
  * Animación del menú principal: la Tierra gira despacio y el ovni se acerca por la derecha.
- * Al despegar, el ovni "arranca motores" (vibra, gira más rápido y destella) mientras se cargan
- * los datos, y después vuela con la cámara hasta la ciudad (5-7 s). Cesium precarga las teselas
+ * Al despegar, el ovni "arranca motores" (vibra, gira más rápido y destella) y viaja entre nubes
+ * que pasan a toda velocidad mientras se cargan los datos y la ciudad; después vuela con la cámara
+ * hasta la ciudad (5-7 s). Cesium precarga las teselas
  * del destino durante el vuelo, así que al llegar el mapa ya está casi listo.
  */
 import {
-  Camera, Cartesian3, CesiumWidget, Color, ColorBlendMode, Ellipsoid, HeadingPitchRange, Math as CMath, Matrix3, Matrix4,
+  Billboard, BillboardCollection, Camera, Cartesian3, CesiumWidget, Color, ColorBlendMode, Ellipsoid, HeadingPitchRange,
+  Math as CMath, Matrix3, Matrix4,
 } from '@cesium/engine';
 import { Craft } from './flight';
 
@@ -19,6 +21,36 @@ const NEAR = 70; // distancia final del ovni a la cámara en el menú (m)
 const FAR = 1200; // distancia desde la que llega al cargar la página (m)
 const TILT = 0.32; // inclinación hacia la cámara para que se vea la cúpula (igual que en el juego)
 const GLOW = Color.fromCssColorString('#7ff0ff');
+
+// Nubes del viaje: se colocan respecto a la cámara y se acercan a toda velocidad (la cámara no se mueve).
+const CLOUDS = 56;
+const CLOUD_FAR = 950; // m: aparecen aquí…
+const CLOUD_NEAR = 12; // …y desaparecen al pasar junto a la cámara
+const CLOUD_SPEED = 420; // m/s
+
+/** Textura de nube: varias bolas blancas difuminadas (tres variantes). */
+function cloudTexture(seed: number): HTMLCanvasElement {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const g = c.getContext('2d')!;
+  let s = seed * 9301 + 49297;
+  const rnd = () => ((s = (s * 9301 + 49297) % 233280) / 233280);
+  // Bolas siempre dentro del lienzo (si no, se ve el borde recto de la imagen al girarla).
+  for (let i = 0; i < 9; i++) {
+    const r = 34 + rnd() * 40, x = r + 8 + rnd() * (240 - 2 * r), y = 128 + (rnd() * 2 - 1) * (112 - r) * 0.5;
+    const grad = g.createRadialGradient(x, y, 0, x, y, r);
+    grad.addColorStop(0, 'rgba(255,255,255,1)');
+    grad.addColorStop(0.5, 'rgba(248,251,255,0.8)');
+    grad.addColorStop(1, 'rgba(230,240,255,0)');
+    g.fillStyle = grad;
+    g.beginPath();
+    g.arc(x, y, r, 0, Math.PI * 2);
+    g.fill();
+  }
+  return c;
+}
+
+interface Cloud { b: Billboard; x: number; y: number; z: number; size: number }
 
 const ease = (x: number) => (x < 0.5 ? 2 * x * x : 1 - (-2 * x + 2) ** 2 / 2);
 
@@ -38,9 +70,52 @@ export class IntroScene {
   private readonly rot = new Matrix3();
   private readonly v = { pos: new Cartesian3(), up: new Cartesian3(), x: new Cartesian3(), y: new Cartesian3(), tmp: new Cartesian3(), n: new Cartesian3() };
 
+  private readonly clouds: Cloud[] = [];
+  private readonly cloudLayer = new BillboardCollection();
+  private cloudLevel = 0; // 0-1: intensidad de las nubes (aparecen y se desvanecen suavemente)
+
   constructor(private viewer: CesiumWidget, private ufo: Craft) {
     this.scratch = new Camera(viewer.scene);
+    viewer.scene.primitives.add(this.cloudLayer);
+    const textures = [1, 2, 3].map(cloudTexture);
+    for (let i = 0; i < CLOUDS; i++) {
+      const cloud: Cloud = { b: this.cloudLayer.add({ position: Cartesian3.ZERO, image: textures[i % 3], sizeInMeters: true, show: false }), x: 0, y: 0, z: 0, size: 0 };
+      this.respawn(cloud, CLOUD_NEAR + Math.random() * (CLOUD_FAR - CLOUD_NEAR));
+      this.clouds.push(cloud);
+    }
     viewer.scene.preRender.addEventListener(() => this.tick());
+  }
+
+  /** Nueva nube a `z` metros, repartida por la vista (más abierta cuanto más lejos). */
+  private respawn(c: Cloud, z = CLOUD_FAR) {
+    c.z = z;
+    c.x = (Math.random() * 2 - 1) * z * 0.75;
+    c.y = (Math.random() * 2 - 1) * z * 0.45;
+    c.size = 90 + Math.random() * 150;
+    c.b.rotation = Math.random() * Math.PI * 2;
+  }
+
+  /** Mueve las nubes hacia la cámara y las coloca delante de ella. */
+  private updateClouds(dt: number, target: number) {
+    this.cloudLevel += (target - this.cloudLevel) * Math.min(1, 1.6 * dt);
+    const visible = this.cloudLevel > 0.01;
+    const { camera } = this.viewer;
+    const { pos, tmp } = this.v;
+    for (const c of this.clouds) {
+      c.b.show = visible;
+      if (!visible) continue;
+      c.z -= CLOUD_SPEED * dt;
+      if (c.z < CLOUD_NEAR) this.respawn(c);
+      Cartesian3.multiplyByScalar(camera.directionWC, c.z, pos);
+      Cartesian3.add(camera.positionWC, pos, pos);
+      Cartesian3.add(pos, Cartesian3.multiplyByScalar(camera.rightWC, c.x, tmp), pos);
+      Cartesian3.add(pos, Cartesian3.multiplyByScalar(camera.upWC, c.y, tmp), pos);
+      c.b.position = pos;
+      c.b.width = c.b.height = c.size;
+      // Entran difuminadas desde lejos y se desvanecen al pasar junto a la cámara.
+      const fade = Math.min(1, (CLOUD_FAR - c.z) / 260, (c.z - CLOUD_NEAR) / 70);
+      c.b.color = Color.WHITE.withAlpha(Math.max(0, fade) * 0.85 * this.cloudLevel, c.b.color);
+    }
   }
 
   /** Menú principal. `rotateAfter`: segundos antes de empezar a girar la Tierra (si la cámara aún está volando). */
@@ -119,6 +194,9 @@ export class IntroScene {
     const dt = Math.min((now - this.last) / 1000, 0.1);
     this.last = now;
     const model = this.ufo.mesh;
+    // Nubes: durante el arranque y la carga; se desvanecen al empezar el vuelo (y sin "reducir movimiento").
+    const flightT = this.phase === 'flight' ? (now - this.flight.start) / 1000 : 0;
+    this.updateClouds(dt, !this.still && (this.phase === 'warmup' || (this.phase === 'flight' && flightT < 0.6)) ? 1 : 0);
     if (this.phase === 'off' || !model) return;
     const { camera } = this.viewer;
 

@@ -31,6 +31,7 @@ let type: AdType = 'lugar';
 let tarifas: Record<string, Tarifa> = {};
 let note = '';
 let discounts: Record<string, number> = {};
+let vat = 21; // % de IVA incluido en los precios (tarifas.json → iva)
 let photos: File[] = [];
 let point: { lat: number; lng: number } | undefined;
 
@@ -41,6 +42,7 @@ async function loadTarifas() {
     tarifas = data.tipos ?? {};
     note = data.nota ?? '';
     discounts = data.descuentos ?? {};
+    vat = Number(data.iva ?? 21);
     if (data.oferta) { $('ad-offer').textContent = data.oferta; $('ad-offer').hidden = false; }
     // Descuento por duración en el desplegable.
     document.querySelectorAll<HTMLOptionElement>('#ad-months option').forEach((o) => {
@@ -69,15 +71,23 @@ async function loadTarifas() {
 const euros = (n: number) => n.toLocaleString('es-ES', { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 }) + ' €';
 const priceText = (t: Tarifa) => t.precio ?? (t.precioMes ? `${euros(t.precioMes)}/mes` : '');
 
-/** Total de la duración elegida con su descuento. */
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/**
+ * Total de la duración elegida con su descuento. Los precios llevan el IVA incluido (obligatorio
+ * para particulares); a empresas y autónomos se les desglosa la base imponible y el IVA.
+ */
 function renderTotal() {
   const t = tarifas[type];
   const months = Number(value('ad-months'));
   if (!t?.precioMes) { $('ad-total').textContent = ''; return; }
   const off = discounts[String(months)] ?? 0;
-  const total = Math.round(t.precioMes * months * (100 - off)) / 100;
-  $('ad-total').innerHTML = `Total: <b>${euros(total)}</b> + IVA por ${months} ${months === 1 ? 'mes' : 'meses'}` +
-    (off ? ` (${euros(Math.round(total / months * 100) / 100)}/mes, ${off} % de descuento)` : '');
+  const total = round2(t.precioMes * months * (100 - off) / 100);
+  const base = round2(total / (1 + vat / 100));
+  const period = `${months} ${months === 1 ? 'mes' : 'meses'}`;
+  const discount = off ? ` (${euros(round2(total / months))}/mes, ${off} % de descuento)` : '';
+  $('ad-total').innerHTML = `Total: <b>${euros(total)}</b> IVA incluido por ${period}${discount}` +
+    (customer() === 'empresa' ? `<br><span class="ad-vat">Base imponible ${euros(base)} + IVA (${vat} %) ${euros(round2(total - base))}</span>` : '');
 }
 
 function renderType() {
@@ -185,6 +195,7 @@ const readAsDataUrl = (f: File) => new Promise<string>((r) => { const fr = new F
 const customer = () => document.querySelector<HTMLInputElement>('input[name="cliente"]:checked')?.value ?? 'empresa';
 document.querySelectorAll('input[name="cliente"]').forEach((i) => i.addEventListener('change', () => {
   $('ad-withdraw-row').hidden = customer() !== 'particular';
+  renderTotal();
 }));
 $('ad-months').addEventListener('change', renderTotal);
 

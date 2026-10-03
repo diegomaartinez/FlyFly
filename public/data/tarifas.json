@@ -1,5 +1,6 @@
 {
-  "nota": "Precios por mes, IVA no incluido.",
+  "nota": "Precios por mes, IVA incluido.",
+  "iva": 21,
   "oferta": "Precios de lanzamiento: si te anuncias ahora, mantienes este precio mientras renueves sin interrupción.",
   "descuentos": { "6": 10, "12": 20 },
   "tipos": {
