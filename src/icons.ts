@@ -31,13 +31,14 @@ import storefront from '@phosphor-icons/core/assets/bold/storefront-bold.svg?raw
 import stop from '@phosphor-icons/core/assets/fill/stop-fill.svg?raw';
 import target from '@phosphor-icons/core/assets/bold/target-bold.svg?raw';
 import timer from '@phosphor-icons/core/assets/bold/timer-bold.svg?raw';
+import trophy from '@phosphor-icons/core/assets/bold/trophy-bold.svg?raw';
 import travel from '@phosphor-icons/core/assets/bold/airplane-in-flight-bold.svg?raw';
 import ufo from '@phosphor-icons/core/assets/fill/flying-saucer-fill.svg?raw';
 import warning from '@phosphor-icons/core/assets/bold/warning-circle-bold.svg?raw';
 
 const ICONS = {
   altitude, arrowDown, arrowRight, arrowUp, camera, check, close, compass, confetti, cookie, external, gear, home, info, keyboard, legal, loader,
-  megaphone, nav, path, pin, question, recent, reset, ruler, search, share, star, stop, storefront, target, timer, travel, ufo, warning,
+  megaphone, nav, path, pin, question, recent, reset, ruler, search, share, star, stop, storefront, target, timer, travel, trophy, ufo, warning,
 };
 export type IconName = keyof typeof ICONS;
 

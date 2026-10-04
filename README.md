@@ -18,7 +18,8 @@ Los lugares más interesantes de la ciudad están escondidos. Una brújula te gu
 
 - 🌍 **Volar sobre cualquier ciudad del mundo en 3D**: escribe su nombre, despega y tu ovni viajará desde el espacio hasta ella.
 - 🎯 **Encontrar lugares escondidos**: monumentos, museos, playas, miradores y rincones con historia. Una brújula te indica hacia dónde volar y su distancia.
-- 🔎 **Buscar como en un mapa**: escribe «cafeterías», «hoteles» o «museos» y verás los locales de la ciudad con su foto, descripción y enlace. Un toque y vuelas hasta ellos.
+- 🔎 **Buscar negocios**: elige una categoría o escribe lo que buscas y verás los negocios de la ciudad con su foto, descripción, web y cómo llegar. Un toque y vuelas hasta ellos.
+- 🏆 **Ranking de ciudades**: descubre qué países y ciudades tienen más negocios en el mapa y viaja a cualquiera de ellas.
 - 🎈 **Negocios en el cielo**: tiendas, restaurantes y particulares se anuncian con su propio lugar, un globo aerostático, un ovni gigante o una avioneta con pancarta.
 - 📖 **Conocer cada lugar**: al descubrirlo se abre una ficha con foto, descripción y enlace a Wikipedia.
 - 🏆 **Completar la ciudad**: el menú de lugares muestra los que has descubierto y cuántos te quedan. Al encontrarlos todos verás tus estadísticas y podrás compartir tu logro.

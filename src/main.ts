@@ -9,7 +9,7 @@ import { adsEnabled, manageConsent, showAd } from './ads';
 import { AdvertiserLayer, loadAdvertisers } from './advertisers';
 import { track } from './analytics';
 import { CITY_ID, loadEdition, loadEditionPois } from './edition';
-import { FinderResult, searchPlaces, SUGGESTIONS, warmFinder } from './finder';
+import { cityTags, FinderResult, loadRanking, RankingCity, searchPlaces, warmFinder } from './finder';
 import { bearing, distance, fetchImageCredit, fetchSummary, formatDistance, FoundVisibility, loadCityPois, loadSponsors, Poi, PoiLayer, wikiUrl } from './pois';
 import { createWorld, geocode, GeoResult, groundHeight, waitForPreload, initialQuality, Quality, setQuality, World } from './world';
 // Sonido desactivado (para reactivarlo, descomenta las líneas marcadas con "Sonido").
@@ -329,6 +329,12 @@ async function flyTo(place: GeoResult): Promise<number> {
   ads.clear();
   document.body.classList.remove('flying');
   $('city-name').textContent = $('drawer-city').textContent = $('finder-city').textContent = place.name;
+  // El buscador empieza vacío en cada ciudad.
+  $('finder-results').replaceChildren();
+  $('finder-status').textContent = '';
+  $<HTMLInputElement>('finder-input').value = '';
+  $<HTMLSelectElement>('finder-tags').innerHTML = '<option value="">Todas</option>';
+  tagsCity = undefined;
   launchStatus('Arrancando motores…');
   intro.warmup();
 
@@ -413,6 +419,7 @@ async function openSheet(poi: Poi, fromDiscovery = false) {
   sheetFromDiscovery = fromDiscovery;
   closeDrawer();
   closeFinder();
+  closeRanking();
   closePopovers();
   const img = $<HTMLImageElement>('sheet-img');
   $('sheet').classList.toggle('no-media', !poi.image);
@@ -554,6 +561,7 @@ function toggleDrawer() {
   closePopovers();
   closeSheet();
   closeFinder();
+  closeRanking();
   gridCount = -1;
   renderDrawer();
   drawer.hidden = false;
@@ -561,7 +569,7 @@ function toggleDrawer() {
 $('menu-btn').onclick = toggleDrawer;
 $('drawer-close').onclick = closeDrawer;
 
-// ---------- Buscador de la ciudad (como Google Maps) ----------
+// ---------- Buscador de la ciudad ----------
 function closeFinder() {
   $('finder').hidden = true;
 }
@@ -570,8 +578,14 @@ function openFinder() {
   closePopovers();
   closeSheet();
   closeDrawer();
+  closeRanking();
   $('finder').hidden = false;
-  if (currentCity) warmFinder(currentCity, !edition);
+  if (currentCity) {
+    warmFinder(currentCity, !edition);
+    void fillTags(currentCity);
+    // Al abrir, la lista completa (anunciantes primero, del que más paga al que menos).
+    if (!$('finder-results').childElementCount) void runFinder();
+  }
   const input = $<HTMLInputElement>('finder-input');
   input.focus();
   input.select();
@@ -579,45 +593,92 @@ function openFinder() {
 $('finder-btn').onclick = openFinder;
 $('finder-close').onclick = closeFinder;
 $('finder-input').addEventListener('keydown', (e) => { if (e.key === 'Escape') closeFinder(); });
-
-const chips = $('finder-chips');
-for (const s of edition ? ['Restaurantes', 'Cafeterías', 'Hoteles', 'Museos', 'Tiendas', 'Ocio'] : SUGGESTIONS) {
-  const b = document.createElement('button');
-  b.type = 'button';
-  b.textContent = s;
-  b.onclick = () => { $<HTMLInputElement>('finder-input').value = s; runFinder(s); };
-  chips.append(b);
-}
 $('finder-form').addEventListener('submit', (e) => {
   e.preventDefault();
-  runFinder($<HTMLInputElement>('finder-input').value.trim());
+  void runFinder();
 });
+$('finder-tags').addEventListener('change', () => void runFinder());
+
+/** Desplegable de categorías: las etiquetas de los anunciantes de la ciudad. */
+let tagsCity: GeoResult | undefined;
+async function fillTags(city: GeoResult) {
+  const select = $<HTMLSelectElement>('finder-tags');
+  $('finder-filter').hidden = !!edition;
+  if (edition || tagsCity === city) return;
+  tagsCity = city;
+  const tags = await cityTags(city);
+  if (currentCity !== city) return;
+  select.innerHTML = '<option value="">Todas</option>';
+  for (const { tag, count } of tags) select.append(new Option(`${tag} (${count})`, tag));
+}
 
 let finderRun = 0;
-async function runFinder(query: string) {
-  if (!query || !currentCity) return;
-  const run = ++finderRun;
+async function runFinder() {
   const city = currentCity;
-  const list = $('finder-results');
-  list.innerHTML = '';
-  $('finder-status').textContent = 'Buscando…';
-  track('busqueda', { texto: query.toLowerCase().slice(0, 40), ciudad: city.name });
-  // En la edición de ciudad también se buscan sus lugares (en la general, los de Wikipedia se descubren volando).
+  if (!city) return;
+  const query = $<HTMLInputElement>('finder-input').value.trim();
+  const tag = $<HTMLSelectElement>('finder-tags').value;
+  const run = ++finderRun;
+  if (query || tag) track('busqueda', { texto: (query || tag).toLowerCase().slice(0, 40), ciudad: city.name });
+  // En la edición de ciudad se buscan sus lugares (en la general, los de Wikipedia se descubren volando).
   const own = edition ? [...pois.pois.values()].filter((p) => p.id.startsWith('c_')) : [];
-  let shown = 0;
-  // Primero salen al momento los anunciantes (y lugares propios); los locales de OpenStreetMap se añaden al llegar.
-  await searchPlaces(query, city, ufo, { ads: !edition, places: own }, ({ results, pending, osmFailed }) => {
-    if (run !== finderRun) return;
-    for (const r of results.slice(shown)) list.append(renderResult(r));
-    shown = results.length;
-    const count = `${results.length} ${results.length === 1 ? 'resultado' : 'resultados'}`;
-    $('finder-status').textContent = pending
-      ? results.length ? `${count}. Buscando más locales…` : 'Buscando…'
-      : results.length
-        ? `${count}${osmFailed ? ' (sin los locales de OpenStreetMap, que no responden ahora)' : ''}`
-        : osmFailed ? 'La búsqueda de locales no está disponible ahora mismo. Inténtalo de nuevo.' : `No encontré «${query}» en ${city.name}.`;
-  });
+  const results = await searchPlaces(query, city, ufo, { ads: !edition, places: own, tag });
+  if (run !== finderRun) return;
+  const list = $('finder-results');
+  list.replaceChildren(...results.map(renderResult));
+  const what = edition ? ['lugar', 'lugares'] : ['negocio', 'negocios'];
+  $('finder-status').textContent = results.length
+    ? `${results.length} ${results.length === 1 ? what[0] : what[1]}`
+    : query || tag
+      ? `No encontré «${query || tag}» en ${city.name}.`
+      : edition ? '' : `Todavía no hay negocios anunciados en ${city.name}. ¡Sé el primero desde «Anúnciate»!`;
 }
+
+// ---------- Ranking de países y ciudades con más anunciantes ----------
+function closeRanking() {
+  $('ranking').hidden = true;
+}
+async function openRanking() {
+  if (!$('ranking').hidden) return closeRanking();
+  closePopovers();
+  closeSheet();
+  closeDrawer();
+  closeFinder();
+  $('ranking').hidden = false;
+  const countries = await loadRanking();
+  const cityRow = (c: RankingCity, rank: number) => {
+    const li = document.createElement('li');
+    li.innerHTML = `<button type="button" class="ranking-row"><span class="rank"></span><span class="ranking-name"><b></b><small></small></span><span class="ranking-count"></span>${icon('travel')}</button>`;
+    li.querySelector('.rank')!.textContent = String(rank);
+    li.querySelector('b')!.textContent = c.name;
+    li.querySelector('small')!.textContent = c.country;
+    li.querySelector('.ranking-count')!.textContent = `${c.count} ${c.count === 1 ? 'anunciante' : 'anunciantes'}`;
+    li.querySelector('button')!.onclick = () => {
+      closeRanking();
+      track('ranking-viaje', { ciudad: c.name });
+      void startFlight({ name: c.name, detail: c.country, lat: c.lat, lng: c.lng });
+    };
+    return li;
+  };
+  const all = countries.flatMap((c) => c.cities).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'es'));
+  $('ranking-cities').replaceChildren(...all.slice(0, 10).map((c, i) => cityRow(c, i + 1)));
+  $('ranking-countries').replaceChildren(...countries.map((country, i) => {
+    const d = document.createElement('details');
+    d.innerHTML = `<summary><span class="rank"></span><b></b><span class="ranking-count"></span></summary><ol class="ranking-list"></ol>`;
+    d.querySelector('.rank')!.textContent = String(i + 1);
+    d.querySelector('b')!.textContent = country.name;
+    d.querySelector('.ranking-count')!.textContent = `${country.count} en ${country.cities.length} ${country.cities.length === 1 ? 'ciudad' : 'ciudades'}`;
+    d.querySelector('ol')!.replaceChildren(...country.cities.map((c, j) => cityRow(c, j + 1)));
+    if (i === 0) d.open = true;
+    return d;
+  }));
+  $('ranking-empty').hidden = all.length > 0;
+}
+$('ranking-btn').onclick = () => void openRanking();
+$('intro-ranking').onclick = () => void openRanking();
+$('finder-ranking').onclick = () => void openRanking();
+$('ranking-close').onclick = closeRanking;
+if (edition) $('intro-ranking').hidden = true;
 
 function renderResult(r: FinderResult): HTMLLIElement {
   const li = document.createElement('li');
@@ -666,6 +727,7 @@ function closePanels() {
   closePopovers();
   closeDrawer();
   closeFinder();
+  closeRanking();
   closeSheet();
 }
 function togglePopover(id: 'settings' | 'help') {

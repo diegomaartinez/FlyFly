@@ -56,15 +56,16 @@ Artículos geolocalizados de Wikipedia con foto, en cualquier ciudad del mundo. 
 
 ## Buscador de la ciudad (`src/finder.ts`)
 
-Botón de la lupa en el vuelo: busca «cafeterías», «hotel», «pizza»… Reconoce categorías habituales (`CATEGORIES`, con sus palabras y etiquetas de OpenStreetMap) y, si no, busca por nombre. Resultados:
+Botón de la lupa en el vuelo. De momento solo busca entre los anunciantes de la ciudad (sin servicios externos: todo en el navegador). Al abrirlo muestra todos; se puede filtrar con el desplegable de categorías (las `tags` de los anunciantes de la ciudad, con cuántos la llevan) y escribir un nombre o lo que se busca (con sinónimos: `CATEGORIES`, p. ej. «pizza» encuentra la etiqueta «restaurante»). Resultados:
 
-1. Anunciantes cuyo nombre, frase, texto o `tags` coinciden, del que más paga al que menos (`pagado` o, si falta, `precioMes` de su tipo en `tarifas.json`).
-2. En la edición de ciudad, sus lugares que coinciden.
-3. Locales de OpenStreetMap a menos de 6 km (Overpass API), por cercanía, sin repetir anunciantes.
+1. Anunciantes que coinciden, del que más paga al que menos (`pagado` o, si falta, `precioMes` de su tipo en `tarifas.json`).
+2. En la edición de ciudad (sin anuncios), sus lugares que coinciden.
 
 Cada resultado muestra foto (si la hay), nombre, descripción, distancia, enlace y un botón «Ir» que teletransporta el ovni. Los anunciantes llevan además un botón de Google Maps (`maps` de su anuncio o, si falta, un enlace a sus coordenadas), que también aparece en su ficha como «Cómo llegar».
 
-Rapidez: los anunciantes y lugares propios salen al momento (los anunciantes se descargan una vez por ciudad) y los locales de OpenStreetMap se añaden al llegar. Las búsquedas a Overpass se guardan en memoria, cancelan la anterior y, si el servidor principal tarda más de 2,5 s, se pregunta también a `overpass.kumi.systems` y se usa la primera respuesta.
+## Ranking de ciudades (`loadRanking` en `src/finder.ts`)
+
+Botón del trofeo (en el vuelo, en el buscador y en la pantalla de inicio): las 10 ciudades con más anunciantes vigentes y los países ordenados por número de anunciantes, cada uno desplegable con sus ciudades. Tocar una ciudad lleva a ella con la animación de despegue (la posición es el centro de sus anunciantes). Usa los campos `ciudad` y `pais` de cada anuncio, que la página Anúnciate rellena sola con la ubicación marcada (Nominatim); los anuncios sin `ciudad` no cuentan. No aparece en la edición de ciudad.
 
 ## Anunciantes
 
@@ -89,6 +90,7 @@ Formato de `public/data/anunciantes.json`:
     "description": "Vistas al mar en pleno centro", "text": "Texto de la ficha",
     "images": ["anunciantes/hotel-atlantico-1.jpg"],
     "link": "https://ejemplo.com", "cta": "Reservar", "until": "2026-12-31",
+    "ciudad": "A Coruña", "pais": "España",
     "tags": ["hotel", "alojamiento"], "pagado": 12, "maps": "https://maps.app.goo.gl/…",
     "color2": "#ffffff", "basket": "#6b4226",
     "banner": "Solo avioneta: texto", "bannerColor": "#ffffff"

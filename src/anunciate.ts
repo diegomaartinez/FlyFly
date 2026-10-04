@@ -118,6 +118,22 @@ function setPoint(lat: number, lng: number) {
     marker.on('dragend', () => { const p = marker!.getLatLng(); setPoint(p.lat, p.lng); });
   } else marker.setLatLng([lat, lng]);
   $('ad-coords').textContent = `Ubicación: ${lat.toFixed(5)}, ${lng.toFixed(5)}. Puedes arrastrar el marcador para ajustarla.`;
+  place = {};
+  clearTimeout(placeTimer);
+  placeTimer = window.setTimeout(() => void findPlace(lat, lng), 600);
+}
+
+/** Ciudad y país de la ubicación (para el ranking de ciudades), con Nominatim. */
+let place: { ciudad?: string; pais?: string } = {};
+let placeTimer = 0;
+async function findPlace(lat: number, lng: number) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&zoom=10&accept-language=es&lat=${lat}&lon=${lng}`;
+    const { address = {} } = await (await fetch(url)).json();
+    if (point?.lat !== lat || point?.lng !== lng) return;
+    place = { ciudad: address.city ?? address.town ?? address.village ?? address.municipality, pais: address.country };
+    if (place.ciudad) $('ad-coords').textContent = `Ubicación: ${[place.ciudad, place.pais].filter(Boolean).join(', ')} (${lat.toFixed(5)}, ${lng.toFixed(5)}). Puedes arrastrar el marcador para ajustarla.`;
+  } catch { /* sin ciudad: se completa al revisar la solicitud */ }
 }
 map.on('click', (e: L.LeafletMouseEvent) => setPoint(e.latlng.lat, e.latlng.lng));
 
@@ -210,7 +226,7 @@ function buildEntry() {
   const until = new Date();
   until.setMonth(until.getMonth() + months);
   return {
-    id, name: value('ad-name'), type, lat: +point!.lat.toFixed(6), lng: +point!.lng.toFixed(6),
+    id, name: value('ad-name'), type, ciudad: place.ciudad, pais: place.pais, lat: +point!.lat.toFixed(6), lng: +point!.lng.toFixed(6),
     color: value('ad-color'), description: value('ad-desc') || undefined, text: value('ad-text') || undefined,
     tags: value('ad-tags').split(',').map((t) => t.trim()).filter(Boolean),
     banner: type === 'avioneta' ? value('ad-banner') || undefined : undefined,

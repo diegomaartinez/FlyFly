@@ -31,6 +31,9 @@ export interface Advertiser {
   cta?: string;
   /** Último día visible (AAAA-MM-DD). */
   until?: string;
+  /** Ciudad y país (para el ranking). */
+  ciudad?: string;
+  pais?: string;
   /** Categoría y palabras clave para el buscador (p. ej. ["cafetería", "desayunos"]). */
   tags?: string[];
   /** Importe mensual que paga: ordena los resultados del buscador (si falta, el precio de su tipo). */
@@ -50,17 +53,22 @@ const hex = (c?: string) => (c && /^#[0-9a-f]{6}$/i.test(c) ? c : undefined);
 const LABEL_DISTANCE = 3000; // las etiquetas se ven desde 3 km
 const RADIUS = 8000; // anunciantes a menos de 8 km del centro de la ciudad
 
-/** Anunciantes vigentes cerca de la ciudad. */
-export async function loadAdvertisers(lat: number, lng: number): Promise<Advertiser[]> {
+/** Todos los anunciantes vigentes (sin caducar). */
+export async function loadAllAdvertisers(): Promise<Advertiser[]> {
   try {
     const res = await fetch('data/anunciantes.json', { cache: 'no-cache' });
     if (!res.ok) return [];
     const list: Advertiser[] = await res.json();
     const today = new Date().toISOString().slice(0, 10);
-    return list.filter((a) => (!a.until || a.until >= today) && distance(a, { lat, lng }) < RADIUS);
+    return list.filter((a) => !a.until || a.until >= today);
   } catch {
     return [];
   }
+}
+
+/** Anunciantes vigentes cerca de la ciudad. */
+export async function loadAdvertisers(lat: number, lng: number): Promise<Advertiser[]> {
+  return (await loadAllAdvertisers()).filter((a) => distance(a, { lat, lng }) < RADIUS);
 }
 
 /** Convierte un anunciante en un lugar para reutilizar la ficha. */

@@ -35,6 +35,7 @@
       <button id="auto-btn" class="chip chip-auto" hidden aria-pressed="false">
         <span id="auto-icon" data-icon="path"></span><span id="auto-label">Exploración automática</span>
       </button>
+      <button id="ranking-btn" class="icon-btn" aria-label="Ranking de ciudades" title="Ranking de ciudades"><span data-icon="trophy"></span></button>
       <button id="finder-btn" class="icon-btn" aria-label="Buscar en la ciudad" title="Buscar en la ciudad"><span data-icon="search"></span></button>
       <button id="menu-btn" class="chip chip-progress" aria-label="Ver lugares descubiertos">
         <span data-icon="target"></span><b id="visited">0</b><span class="muted">de <span id="total">0</span></span>
@@ -91,12 +92,33 @@
     </div>
     <form id="finder-form" class="search-row finder-form" autocomplete="off" role="search">
       <span class="search-icon" data-icon="search"></span>
-      <input id="finder-input" type="search" placeholder="Cafeterías, hoteles, museos…" enterkeyhint="search" aria-label="Qué buscas" />
+      <input id="finder-input" type="search" placeholder="Nombre o qué buscas…" enterkeyhint="search" aria-label="Qué buscas" />
       <button class="btn btn-primary" type="submit">Buscar</button>
     </form>
-    <div id="finder-chips" class="finder-chips"></div>
+    <div id="finder-filter" class="finder-filter">
+      <label for="finder-tags">Categoría</label>
+      <select id="finder-tags"><option value="">Todas</option></select>
+    </div>
     <p id="finder-status" class="field-help" role="status"></p>
     <ul id="finder-results" class="finder-results"></ul>
+    <p class="finder-more"><button id="finder-ranking" class="link-btn" type="button"><span data-icon="trophy"></span>Ver el ranking de ciudades</button></p>
+  </aside>
+
+  <aside id="ranking" class="drawer ranking" aria-labelledby="ranking-title" hidden>
+    <div class="drawer-head">
+      <h2 id="ranking-title">Ranking de anunciantes</h2>
+      <button id="ranking-close" class="icon-btn" aria-label="Cerrar"><span data-icon="close"></span></button>
+    </div>
+    <p class="field-help">Países y ciudades con más negocios anunciados. Toca una ciudad para viajar hasta ella.</p>
+    <section>
+      <h3>Ciudades</h3>
+      <ol id="ranking-cities" class="ranking-list"></ol>
+    </section>
+    <section>
+      <h3>Países</h3>
+      <div id="ranking-countries" class="ranking-countries"></div>
+    </section>
+    <p id="ranking-empty" class="empty" hidden>Todavía no hay anunciantes en ninguna ciudad.</p>
   </aside>
 
   <aside id="drawer" class="drawer" aria-labelledby="drawer-title" hidden>
@@ -240,6 +262,7 @@
         <h3>Recientes</h3>
         <div id="recent-list" class="recent-list"></div>
       </div>
+      <button id="intro-ranking" class="link-btn intro-ranking" type="button"><span data-icon="trophy"></span>Ranking de ciudades con más anunciantes</button>
       <p id="advertise-note" class="note-cta">¿Tienes un negocio o quieres salir en el mapa? <a href="anunciate.html" target="_blank" rel="noopener">Anúnciate en FlyFly</a></p>
       <p id="mode-note" class="note"></p>
       <nav class="legal-links" aria-label="Información legal">

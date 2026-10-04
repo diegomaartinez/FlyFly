@@ -442,6 +442,7 @@ kbd { display: inline-block; min-width: 26px; margin-right: 3px; padding: 2px 7p
 }
 
 @media (max-width: 420px) {
+  #ranking-btn { display: none; } /* en el móvil, el ranking se abre desde el buscador */
   .chip-city .chip-stack { display: none; }
   .chip-city { padding: 6px; }
 }
@@ -457,9 +458,6 @@ kbd { display: inline-block; min-width: 26px; margin-right: 3px; padding: 2px 7p
 /* ---------- Buscador de la ciudad ---------- */
 .finder-form input { height: 48px; padding-left: 46px; }
 .finder-form .btn { height: 48px; padding: 0 18px; font-size: 15px; }
-.finder-chips { display: flex; gap: 6px; overflow-x: auto; margin: 12px 0 4px; padding-bottom: 4px; }
-.finder-chips button { flex: none; min-height: 34px; padding: 0 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); font-size: 14px; font-weight: 600; color: var(--ink-2); }
-.finder-chips button:hover { border-color: var(--accent); color: var(--accent); }
 .finder-results { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 10px; }
 .result { padding: 10px; border-radius: var(--radius-card); background: var(--surface-2); }
 .result.is-sponsored { background: color-mix(in srgb, var(--brand, var(--accent)) 10%, var(--surface)); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--brand, var(--accent)) 45%, transparent); }
@@ -480,3 +478,45 @@ kbd { display: inline-block; min-width: 26px; margin-right: 3px; padding: 2px 7p
 .btn-start { width: 100%; height: 54px; margin-top: 22px; font-size: 17px; }
 .city-logo { height: 40px; width: auto; margin-right: 6px; }
 .edition-city #city-btn .chip-trailing { display: none; }
+
+.finder-filter { display: flex; align-items: center; gap: 10px; margin: 12px 0 4px; }
+.finder-filter[hidden] { display: none; }
+.finder-filter label { font-size: 14px; font-weight: 600; color: var(--ink-2); }
+.finder-filter select {
+  flex: 1; min-width: 0; height: 42px; padding: 0 12px; border: 2px solid var(--line); border-radius: 12px;
+  background: var(--surface); color: var(--ink); font: 600 14.5px var(--font);
+}
+.finder-filter select:focus { outline: none; border-color: var(--accent); }
+.finder-more { margin-top: 10px; text-align: center; }
+.finder-more .link-btn, .intro-ranking { display: inline-flex; align-items: center; gap: 6px; }
+.link-btn .icon, .intro-ranking .icon { width: 18px; height: 18px; flex: none; }
+
+/* ---------- Ranking de anunciantes ---------- */
+.ranking { z-index: 60; } /* también por encima de la pantalla de inicio */
+.ranking section { margin-top: 18px; }
+.ranking-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.ranking-row {
+  display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; border: 0; border-radius: var(--radius-card);
+  background: var(--surface-2); text-align: left; color: var(--ink);
+}
+.ranking-row:hover { background: var(--accent-soft); }
+.ranking-row > .icon { color: var(--accent); flex: none; }
+.rank { display: grid; place-items: center; flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--surface); font-weight: 700; font-size: 14px; color: var(--ink-2); }
+.ranking-list li:nth-child(1) .rank { background: #f7c948; color: #4a3500; }
+.ranking-list li:nth-child(2) .rank { background: #d5dbe3; color: #2c333d; }
+.ranking-list li:nth-child(3) .rank { background: #e3a875; color: #4a2700; }
+.ranking-name { display: grid; flex: 1; min-width: 0; }
+.ranking-name b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ranking-name small { font-size: 12.5px; color: var(--ink-3); }
+.ranking-count { flex: none; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.ranking-countries { display: grid; gap: 8px; }
+.ranking-countries details { border-radius: var(--radius-card); background: var(--surface-2); }
+.ranking-countries summary { display: flex; align-items: center; gap: 12px; padding: 10px 12px; cursor: pointer; list-style: none; }
+.ranking-countries summary::-webkit-details-marker { display: none; }
+.ranking-countries summary b { flex: 1; }
+.ranking-countries details[open] summary { border-bottom: 1px solid var(--line); }
+.ranking-countries .ranking-list { padding: 8px; }
+.ranking-countries .ranking-row { background: var(--surface); }
+.intro-ranking { margin: 14px 0 0; padding: 0; border: 0; background: none; color: var(--accent); font-weight: 600; font-size: 14.5px; text-align: left; }
+.intro-ranking:hover { text-decoration: underline; }
+.edition-city #ranking-btn { display: none; }
